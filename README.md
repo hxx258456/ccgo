@@ -1,4 +1,4 @@
-# ccgo 国密改造fabric 使用golang加密模块
+# ccgo 国密改造fabric 使用go加密模块
 
 # environments
 ```shell
