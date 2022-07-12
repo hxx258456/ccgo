@@ -9,18 +9,17 @@ package grpc_test
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net"
 	"testing"
 	"time"
 
-	"gitee.com/zhaochuninhefei/zcgolog/zclog"
 	"github.com/hxx258456/ccgo/gmtls"
 	"github.com/hxx258456/ccgo/grpc"
 	"github.com/hxx258456/ccgo/grpc/credentials"
 	"github.com/hxx258456/ccgo/grpc/grpc_test/echo"
 	"github.com/hxx258456/ccgo/net/context"
 	"github.com/hxx258456/ccgo/x509"
+	"github.com/hxx258456/mylog/log"
 )
 
 const (
@@ -36,10 +35,6 @@ const (
 var end chan bool
 
 func Test_credentials(t *testing.T) {
-	zcgologConfig := &zclog.Config{
-		LogLevelGlobal: zclog.LOG_LEVEL_DEBUG,
-	}
-	zclog.InitLogger(zcgologConfig)
 	end = make(chan bool, 64)
 	go serverRun()
 	time.Sleep(1000000)
@@ -50,18 +45,19 @@ func Test_credentials(t *testing.T) {
 func serverRun() {
 	signCert, err := gmtls.LoadX509KeyPair(signCert, signKey)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 
 	certPool := x509.NewCertPool()
 	cacert, err := ioutil.ReadFile(ca)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 	certPool.AppendCertsFromPEM(cacert)
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
-		log.Fatalf("fail to listen: %v", err)
+		log.Fatal().AnErr("fail to listen", err)
+
 	}
 	creds := credentials.NewTLS(&gmtls.Config{
 		ClientAuth:   gmtls.RequireAndVerifyClientCert,
@@ -72,19 +68,19 @@ func serverRun() {
 	echo.RegisterEchoServer(s, &server{})
 	err = s.Serve(lis)
 	if err != nil {
-		log.Fatalf("Serve: %v", err)
+		log.Fatal().AnErr("Serve: %v", err)
 	}
 }
 
 func clientRun() {
 	cert, err := gmtls.LoadX509KeyPair(userCert, userKey)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 	certPool := x509.NewCertPool()
 	cacert, err := ioutil.ReadFile(ca)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 	certPool.AppendCertsFromPEM(cacert)
 	creds := credentials.NewTLS(&gmtls.Config{
@@ -95,7 +91,7 @@ func clientRun() {
 	})
 	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(creds))
 	if err != nil {
-		log.Fatalf("cannot to connect: %v", err)
+		log.Fatal().Err(err)
 	}
 	defer conn.Close()
 	c := echo.NewEchoClient(conn)
@@ -109,7 +105,7 @@ func echoInClient(c echo.EchoClient) {
 	fmt.Printf("客户端发出消息: %s\n", msgClient)
 	r, err := c.Echo(context.Background(), &echo.EchoRequest{Req: msgClient})
 	if err != nil {
-		log.Fatalf("failed to echo: %v", err)
+		log.Fatal().Err(err)
 	}
 	msgServer := r.Result
 	fmt.Printf("客户端收到消息: %s\n", msgServer)

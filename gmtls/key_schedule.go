@@ -20,8 +20,8 @@ import (
 	"io"
 	"math/big"
 
-	"gitee.com/zhaochuninhefei/zcgolog/zclog"
 	"github.com/hxx258456/ccgo/sm2"
+	"github.com/hxx258456/mylog/log"
 	"golang.org/x/crypto/cryptobyte"
 	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/hkdf"
@@ -229,7 +229,7 @@ func (p *nistParameters) SharedKey(peerPublicKey []byte) []byte {
 	// peerPublicKey * 私钥 获取共享密钥
 	xShared, _ := curve.ScalarMult(x, y, p.privateKey)
 	sharedKey := make([]byte, (curve.Params().BitSize+7)/8)
-	zclog.Debugf("===== 使用曲线 %s 与对方公钥计算共享密钥", curve.Params().Name)
+	log.Printf("===== 使用曲线 %s 与对方公钥计算共享密钥", curve.Params().Name)
 	return xShared.FillBytes(sharedKey)
 }
 

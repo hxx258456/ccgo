@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"gitee.com/zhaochuninhefei/zcgolog/zclog"
 	"github.com/hxx258456/ccgo/gmtls"
 	"github.com/hxx258456/ccgo/x509"
+	"github.com/hxx258456/mylog/log"
 )
 
 const (
@@ -46,14 +46,6 @@ func Test_gmssl(t *testing.T) {
 
 // 启动服务端
 func ServerRun(needClientAuth bool) {
-	zclog.ClearDir("logs")
-	zcgologConfig := &zclog.Config{
-		LogFileDir:        "logs",
-		LogFileNamePrefix: "tlstest",
-		LogMod:            zclog.LOG_MODE_SERVER,
-		LogLevelGlobal:    zclog.LOG_LEVEL_DEBUG,
-	}
-	zclog.InitLogger(zcgologConfig)
 	// 导入tls配置
 	config, err := loadServerConfig(needClientAuth)
 	if err != nil {
@@ -62,7 +54,7 @@ func ServerRun(needClientAuth bool) {
 	// 定义tls监听器
 	ln, err := gmtls.Listen("tcp", ":50052", config)
 	if err != nil {
-		zclog.Println(err)
+		log.Print(err)
 		return
 	}
 	defer ln.Close()
@@ -89,7 +81,7 @@ func ClientRunGMSSL() {
 	// 读取sm2 ca证书
 	cacert, err := ioutil.ReadFile(SM2CaCertPath)
 	if err != nil {
-		zclog.Fatal(err)
+		log.Fatal().Err(err)
 	}
 	// 将sm2ca证书作为根证书加入证书池
 	// 即，客户端相信持有该ca颁发的证书的服务端
@@ -149,7 +141,7 @@ func ClientRunTls13() {
 	// 读取sm2 ca证书
 	cacert, err := ioutil.ReadFile(SM2CaCertPath)
 	if err != nil {
-		zclog.Fatal(err)
+		log.Fatal().Err(err)
 	}
 	// 将sm2ca证书作为根证书加入证书池
 	// 即，客户端相信持有该ca颁发的证书的服务端
@@ -232,8 +224,4 @@ func loadServerConfig(needClientAuth bool) (*gmtls.Config, error) {
 	}
 
 	return config, nil
-}
-
-func Test_clearLogs(t *testing.T) {
-	zclog.ClearDir("logs")
 }

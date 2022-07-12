@@ -21,7 +21,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	log "gitee.com/zhaochuninhefei/zcgolog/zclog"
+	"github.com/hxx258456/mylog/log"
 )
 
 type InvalidReason int
@@ -581,7 +581,7 @@ func (c *Certificate) checkNameConstraints(count *int,
 func (c *Certificate) isValid(certType int, currentChain []*Certificate, opts *VerifyOptions) error {
 	// log.Debugf("===== x509/verify.go isValid c.NotAfter 3: %s", c.NotAfter.Format(time.RFC3339))
 	if len(c.UnhandledCriticalExtensions) > 0 {
-		log.Debugf("===== x509/verify.go isValid 证书解析时有未完全处理的扩展ID: %#v", c.UnhandledCriticalExtensions)
+		log.Printf("===== x509/verify.go isValid 证书解析时有未完全处理的扩展ID: %#v", c.UnhandledCriticalExtensions)
 		return UnhandledCriticalExtension{}
 	}
 	if len(currentChain) > 0 {

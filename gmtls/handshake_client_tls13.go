@@ -18,8 +18,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"gitee.com/zhaochuninhefei/zcgolog/zclog"
 	"github.com/hxx258456/ccgo/x509"
+	"github.com/hxx258456/mylog/log"
 )
 
 // tls1.3客户端握手状态
@@ -176,7 +176,7 @@ func (hs *clientHandshakeStateTLS13) checkServerHelloOrHRR() error {
 		c.sendAlert(alertIllegalParameter)
 		return errors.New("gmtls: server chose an unconfigured cipher suite")
 	}
-	zclog.Debugf("===== 客户端确认协商好的密码套件: %s", CipherSuiteName(selectedSuite.id))
+	log.Printf("===== 客户端确认协商好的密码套件: %s", CipherSuiteName(selectedSuite.id))
 	// 设置协商好的密码套件
 	hs.suite = selectedSuite
 	c.cipherSuite = hs.suite.id
@@ -194,7 +194,7 @@ func (hs *clientHandshakeStateTLS13) sendDummyChangeCipherSpec() error {
 	hs.sentDummyCCS = true
 
 	_, err := hs.c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
-	zclog.Debug("===== 客户端发送 DummyChangeCipherSpec")
+	log.Print("===== 客户端发送 DummyChangeCipherSpec")
 	return err
 }
 
@@ -293,7 +293,7 @@ func (hs *clientHandshakeStateTLS13) processHelloRetryRequest() error {
 	// 将ServerHello写入握手数据摘要
 	hs.transcript.Write(hs.hello.marshal())
 	// 再次发送ClientHello
-	zclog.Debug("===== 客户端再次发出ClientHello(HelloRetryRequest)")
+	log.Print("===== 客户端再次发出ClientHello(HelloRetryRequest)")
 	if _, err := c.writeRecord(recordTypeHandshake, hs.hello.marshal()); err != nil {
 		return err
 	}
@@ -308,7 +308,7 @@ func (hs *clientHandshakeStateTLS13) processHelloRetryRequest() error {
 		return unexpectedMessageError(serverHello, msg)
 	}
 	hs.serverHello = serverHello
-	zclog.Debug("===== 客户端再次读取到ServerHello(HelloRetryRequest)")
+	log.Print("===== 客户端再次读取到ServerHello(HelloRetryRequest)")
 
 	if err := hs.checkServerHelloOrHRR(); err != nil {
 		return err
@@ -380,7 +380,7 @@ func (hs *clientHandshakeStateTLS13) processServerHello() error {
 func (hs *clientHandshakeStateTLS13) establishHandshakeKeys() error {
 	c := hs.c
 	// 根据服务端公钥计算共享密钥
-	zclog.Debug("===== 利用服务端公钥计算共享密钥")
+	log.Print("===== 利用服务端公钥计算共享密钥")
 	sharedKey := hs.ecdheParams.SharedKey(hs.serverHello.serverShare.data)
 	if sharedKey == nil {
 		c.sendAlert(alertIllegalParameter)
@@ -436,7 +436,7 @@ func (hs *clientHandshakeStateTLS13) readServerParameters() error {
 		return unexpectedMessageError(encryptedExtensions, msg)
 	}
 	hs.transcript.Write(encryptedExtensions.marshal())
-	zclog.Debug("===== 客户端读取到 encryptedExtensionsMsg")
+	log.Print("===== 客户端读取到 encryptedExtensionsMsg")
 	// 检查ALPN协议设置
 	if err := checkALPN(hs.hello.alpnProtocols, encryptedExtensions.alpnProtocol); err != nil {
 		c.sendAlert(alertUnsupportedExtension)
@@ -474,7 +474,7 @@ func (hs *clientHandshakeStateTLS13) readServerCertificate() error {
 	certReq, ok := msg.(*certificateRequestMsgTLS13)
 	if ok {
 		hs.transcript.Write(certReq.marshal())
-		zclog.Debug("===== 客户端读取到 certificateRequestMsgTLS13")
+		log.Print("===== 客户端读取到 certificateRequestMsgTLS13")
 		hs.certReq = certReq
 		// 从tls连接读取下一条消息
 		msg, err = c.readHandshake()
@@ -487,7 +487,7 @@ func (hs *clientHandshakeStateTLS13) readServerCertificate() error {
 		c.sendAlert(alertUnexpectedMessage)
 		return unexpectedMessageError(certMsg, msg)
 	}
-	zclog.Debug("===== 客户端读取到 certificateMsgTLS13")
+	log.Print("===== 客户端读取到 certificateMsgTLS13")
 	if len(certMsg.certificate.Certificate) == 0 {
 		c.sendAlert(alertDecodeError)
 		return errors.New("gmtls: received empty certificates message")
@@ -510,7 +510,7 @@ func (hs *clientHandshakeStateTLS13) readServerCertificate() error {
 		c.sendAlert(alertUnexpectedMessage)
 		return unexpectedMessageError(certVerify, msg)
 	}
-	zclog.Debug("===== 客户端读取到 certificateVerifyMsg")
+	log.Print("===== 客户端读取到 certificateVerifyMsg")
 
 	// See RFC 8446, Section 4.4.3.
 	if !isSupportedSignatureAlgorithm(certVerify.signatureAlgorithm, supportedSignatureAlgorithms) {
@@ -552,7 +552,7 @@ func (hs *clientHandshakeStateTLS13) readServerFinished() error {
 		c.sendAlert(alertUnexpectedMessage)
 		return unexpectedMessageError(finished, msg)
 	}
-	zclog.Debug("===== 客户端读取到 ServerFinished")
+	log.Print("===== 客户端读取到 ServerFinished")
 	// 计算期望的finished散列并与接收的值比较
 	expectedMAC := hs.suite.finishedHash(c.in.trafficSecret, hs.transcript)
 	if !hmac.Equal(expectedMAC, finished.verifyData) {
@@ -616,7 +616,7 @@ func (hs *clientHandshakeStateTLS13) sendClientCertificate() error {
 	if _, err := c.writeRecord(recordTypeHandshake, certMsg.marshal()); err != nil {
 		return err
 	}
-	zclog.Debug("===== 客户端发出 ClientCertificate")
+	log.Print("===== 客户端发出 ClientCertificate")
 
 	// If we sent an empty certificate message, skip the CertificateVerify.
 	if len(cert.Certificate) == 0 {
@@ -656,7 +656,7 @@ func (hs *clientHandshakeStateTLS13) sendClientCertificate() error {
 	if _, err := c.writeRecord(recordTypeHandshake, certVerifyMsg.marshal()); err != nil {
 		return err
 	}
-	zclog.Debug("===== 客户端发出 ClientCertVerify")
+	log.Print("===== 客户端发出 ClientCertVerify")
 
 	return nil
 }
@@ -673,7 +673,7 @@ func (hs *clientHandshakeStateTLS13) sendClientFinished() error {
 	if _, err := c.writeRecord(recordTypeHandshake, finished.marshal()); err != nil {
 		return err
 	}
-	zclog.Debug("===== 客户端发出 ClientFinished")
+	log.Print("===== 客户端发出 ClientFinished")
 	// 注意，此时才将重新生成的客户端会话密钥设置到连接通道上。
 	c.out.setTrafficSecret(hs.suite, hs.trafficSecret)
 

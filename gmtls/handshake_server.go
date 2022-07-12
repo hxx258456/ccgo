@@ -21,9 +21,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"gitee.com/zhaochuninhefei/zcgolog/zclog"
 	"github.com/hxx258456/ccgo/sm2"
 	"github.com/hxx258456/ccgo/x509"
+	"github.com/hxx258456/mylog/log"
 )
 
 // serverHandshakeState contains details of a server handshake in progress.
@@ -47,7 +47,7 @@ type serverHandshakeState struct {
 // 服务端握手
 // serverHandshake performs a TLS handshake as a server.
 func (c *Conn) serverHandshake(ctx context.Context) error {
-	zclog.Debug("===== 开始服务端握手过程")
+	log.Print("===== 开始服务端握手过程")
 	// 读取 ClientHello
 	clientHello, err := c.readClientHello(ctx)
 	if err != nil {
@@ -55,7 +55,7 @@ func (c *Conn) serverHandshake(ctx context.Context) error {
 	}
 	// GMSSL目前采用tls1.3的处理
 	if c.vers == VersionTLS13 || c.vers == VersionGMSSL {
-		zclog.Debug("===== 服务端执行tls1.3或gmssl的握手过程")
+		log.Print("===== 服务端执行tls1.3或gmssl的握手过程")
 		hs := serverHandshakeStateTLS13{
 			c:           c,
 			ctx:         ctx,
@@ -63,7 +63,7 @@ func (c *Conn) serverHandshake(ctx context.Context) error {
 		}
 		return hs.handshake()
 	}
-	zclog.Debug("===== 服务端执行tls1.2或更老版本的握手过程")
+	log.Print("===== 服务端执行tls1.2或更老版本的握手过程")
 	hs := serverHandshakeState{
 		c:           c,
 		ctx:         ctx,
@@ -151,7 +151,7 @@ func (c *Conn) readClientHello(ctx context.Context) (*clientHelloMsg, error) {
 		c.sendAlert(alertUnexpectedMessage)
 		return nil, unexpectedMessageError(clientHello, msg)
 	}
-	zclog.Debug("===== 服务端读取到 ClientHello")
+	log.Print("===== 服务端读取到 ClientHello")
 
 	var configForClient *Config
 	originalConfig := c.config
@@ -177,7 +177,7 @@ func (c *Conn) readClientHello(ctx context.Context) (*clientHelloMsg, error) {
 		c.sendAlert(alertProtocolVersion)
 		return nil, fmt.Errorf("gmtls: client offered only unsupported versions: %x", clientVersions)
 	}
-	zclog.Debug("===== 服务端选择本次tls连接使用的版本是:", ShowTLSVersion(int(c.vers)))
+	log.Print("===== 服务端选择本次tls连接使用的版本是:", ShowTLSVersion(int(c.vers)))
 	c.haveVers = true
 	c.in.version = c.vers
 	c.out.version = c.vers

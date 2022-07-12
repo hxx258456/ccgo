@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"testing"
 
-	"gitee.com/zhaochuninhefei/zcgolog/zclog"
+	"github.com/hxx258456/mylog/log"
 	"golang.org/x/sys/cpu"
 )
 
@@ -41,11 +41,10 @@ func TestSm4(t *testing.T) {
 }
 
 func TestGcmAsmWithNonce(t *testing.T) {
-	zclog.Level = zclog.LOG_LEVEL_DEBUG
-	zclog.Debug("supportSM4:", supportSM4)
-	zclog.Debug("supportsAES:", supportsAES)
-	zclog.Debug("supportsGFMUL:", supportsGFMUL)
-	zclog.Debug("useAVX2:", useAVX2)
+	log.Print("supportSM4:", supportSM4)
+	log.Print("supportsAES:", supportsAES)
+	log.Print("supportsGFMUL:", supportsGFMUL)
+	log.Print("useAVX2:", useAVX2)
 
 	key := []byte{251, 160, 47, 88, 53, 110, 220, 7, 229, 174, 145, 250, 40, 34, 188, 237}
 	nonce := []byte{182, 244, 44, 22, 113, 249, 246, 127, 114, 94, 115, 60}
@@ -147,12 +146,11 @@ func BenchmarkSm4(t *testing.B) {
 }
 
 func TestCheckArch(t *testing.T) {
-	zclog.Level = zclog.LOG_LEVEL_DEBUG
-	zclog.Debug("supportSM4:", supportSM4)
-	zclog.Debug("supportsAES:", supportsAES)
-	zclog.Debug("supportsGFMUL:", supportsGFMUL)
-	zclog.Debug("useAVX2:", useAVX2)
-	zclog.Debug("arch:", runtime.GOARCH)
-	zclog.Debug("cpu.X86.HasAVX2:", cpu.X86.HasAVX2)
-	zclog.Debug("cpu.X86.HasBMI2:", cpu.X86.HasBMI2)
+	log.Print("supportSM4:", supportSM4)
+	log.Print("supportsAES:", supportsAES)
+	log.Print("supportsGFMUL:", supportsGFMUL)
+	log.Print("useAVX2:", useAVX2)
+	log.Print("arch:", runtime.GOARCH)
+	log.Print("cpu.X86.HasAVX2:", cpu.X86.HasAVX2)
+	log.Print("cpu.X86.HasBMI2:", cpu.X86.HasBMI2)
 }
