@@ -21,7 +21,7 @@ import (
 	"math/big"
 
 	"github.com/hxx258456/ccgo/sm2"
-	"github.com/hxx258456/mylog/log"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/cryptobyte"
 	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/hkdf"

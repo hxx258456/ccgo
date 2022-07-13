@@ -11,7 +11,7 @@ import (
 
 	"github.com/hxx258456/ccgo/gmtls"
 	"github.com/hxx258456/ccgo/x509"
-	"github.com/hxx258456/mylog/log"
+	"github.com/rs/zerolog/log"
 )
 
 const (

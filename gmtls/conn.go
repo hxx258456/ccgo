@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/hxx258456/ccgo/x509"
-	"github.com/hxx258456/mylog/log"
+	"github.com/rs/zerolog/log"
 )
 
 // tls安全连接定义, 实现`net.Conn`接口

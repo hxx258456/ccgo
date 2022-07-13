@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/hxx258456/ccgo/x509"
-	"github.com/hxx258456/mylog/log"
+	"github.com/rs/zerolog/log"
 )
 
 // maxClientPSKIdentities is the number of client PSK identities the server will

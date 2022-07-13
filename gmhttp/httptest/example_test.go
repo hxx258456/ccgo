@@ -10,7 +10,7 @@ import (
 
 	http "github.com/hxx258456/ccgo/gmhttp"
 	"github.com/hxx258456/ccgo/gmhttp/httptest"
-	"github.com/hxx258456/mylog/log"
+	"github.com/rs/zerolog/log"
 )
 
 func ExampleResponseRecorder() {

@@ -19,7 +19,7 @@ import (
 	"github.com/hxx258456/ccgo/grpc/grpc_test/echo"
 	"github.com/hxx258456/ccgo/net/context"
 	"github.com/hxx258456/ccgo/x509"
-	"github.com/hxx258456/mylog/log"
+	"github.com/rs/zerolog/log"
 )
 
 const (

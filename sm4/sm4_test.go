@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/hxx258456/mylog/log"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/sys/cpu"
 )
 

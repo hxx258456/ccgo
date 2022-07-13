@@ -23,7 +23,7 @@ import (
 
 	"github.com/hxx258456/ccgo/sm2"
 	"github.com/hxx258456/ccgo/x509"
-	"github.com/hxx258456/mylog/log"
+	"github.com/rs/zerolog/log"
 )
 
 // serverHandshakeState contains details of a server handshake in progress.

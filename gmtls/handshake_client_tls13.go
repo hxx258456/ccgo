@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/hxx258456/ccgo/x509"
-	"github.com/hxx258456/mylog/log"
+	"github.com/rs/zerolog/log"
 )
 
 // tls1.3客户端握手状态
