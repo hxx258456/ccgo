@@ -1,11 +1,5 @@
 # ccgo 国密改造fabric 使用go加密模块
 
-# environments
-```shell
-$ go version
-go version go1.18.3 windows/amd64
-```
-
 ================
 基于`go1.17.5`实现的国密算法库，包括:
 - sm2 : 基于`emmansun/gmsm`的sm2部分实现部分扩展。
@@ -22,7 +16,7 @@ go version go1.18.3 windows/amd64
 > 在x509与gmtls的实现中，国密算法采用的是基于`emmansun/gmsm`的国密实现，该开源项目已实现利用amd64与arm64架构CPU实现对应国密算法的硬件加速。sm2soft/sm3soft/sm4soft是对应国密算法的纯软实现，仅用作验证与参考。
 
 # gmgo的包路径
-go package： `gitee.com/hxx258456/ccgo`
+go package： `github.com/hxx258456/ccgo`
 
 # 国密标准参考
 本项目涉及到的国密有SM2、SM3和SM4，相关国密标准如下：
