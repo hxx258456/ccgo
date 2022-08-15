@@ -809,7 +809,8 @@ type Certificate struct {
 	// BasicConstraintsValid indicates whether IsCA, MaxPathLen,
 	// and MaxPathLenZero are valid.
 	BasicConstraintsValid bool
-	// 是否CA证书
+	// IsCA为false时，表示该证书不是CA证书，MaxPathLen无效。
+	// IsCA为true时，表示该证书是CA证书，此时MaxPathLen表示该证书所属证书信任链中的中间CA证书的数量上限。
 	IsCA bool
 
 	// MaxPathLen and MaxPathLenZero indicate the presence and
