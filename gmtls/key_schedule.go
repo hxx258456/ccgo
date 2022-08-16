@@ -1,4 +1,10 @@
-// Copyright 2022 s1ren@github.com/hxx258456.
+// Copyright (c) 2022 zhaochun
+// gmgo is licensed under Mulan PSL v2.
+// You can use this software according to the terms and conditions of the Mulan PSL v2.
+// You may obtain a copy of Mulan PSL v2 at:
+//          http://license.coscl.org.cn/MulanPSL2
+// THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+// See the Mulan PSL v2 for more details.
 
 /*
 gmtls是基于`golang/go`的`tls`包实现的国密改造版本。
@@ -20,8 +26,8 @@ import (
 	"io"
 	"math/big"
 
+	"gitee.com/zhaochuninhefei/zcgolog/zclog"
 	"github.com/hxx258456/ccgo/sm2"
-	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/cryptobyte"
 	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/hkdf"
@@ -229,7 +235,7 @@ func (p *nistParameters) SharedKey(peerPublicKey []byte) []byte {
 	// peerPublicKey * 私钥 获取共享密钥
 	xShared, _ := curve.ScalarMult(x, y, p.privateKey)
 	sharedKey := make([]byte, (curve.Params().BitSize+7)/8)
-	log.Printf("===== 使用曲线 %s 与对方公钥计算共享密钥", curve.Params().Name)
+	zclog.Debugf("===== 使用曲线 %s 与对方公钥计算共享密钥", curve.Params().Name)
 	return xShared.FillBytes(sharedKey)
 }
 

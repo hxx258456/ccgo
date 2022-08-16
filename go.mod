@@ -1,8 +1,9 @@
 module github.com/hxx258456/ccgo
 
-go 1.18
+go 1.17
 
 require (
+	gitee.com/zhaochuninhefei/zcgolog v0.0.14
 	github.com/census-instrumentation/opencensus-proto v0.2.1
 	github.com/cespare/xxhash/v2 v2.1.2
 	github.com/cncf/udpa/go v0.0.0-20210930031921-04548b0d99d4
@@ -18,7 +19,6 @@ require (
 	github.com/prometheus/client_golang v1.12.1
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.34.0
-	github.com/rs/zerolog v1.27.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.8.0
 	go.opentelemetry.io/proto/otlp v0.7.0
@@ -37,8 +37,6 @@ require (
 	cloud.google.com/go v0.65.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/mattn/go-colorable v0.1.12 // indirect
-	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	go.uber.org/atomic v1.7.0 // indirect

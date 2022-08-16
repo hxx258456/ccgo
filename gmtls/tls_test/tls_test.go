@@ -1,4 +1,10 @@
-// Copyright 2022 s1ren@github.com/hxx258456.
+// Copyright (c) 2022 zhaochun
+// gmgo is licensed under Mulan PSL v2.
+// You can use this software according to the terms and conditions of the Mulan PSL v2.
+// You may obtain a copy of Mulan PSL v2 at:
+//          http://license.coscl.org.cn/MulanPSL2
+// THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+// See the Mulan PSL v2 for more details.
 
 package tls_test
 
@@ -9,9 +15,9 @@ import (
 	"testing"
 	"time"
 
+	"gitee.com/zhaochuninhefei/zcgolog/zclog"
 	"github.com/hxx258456/ccgo/gmtls"
 	"github.com/hxx258456/ccgo/x509"
-	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -46,6 +52,14 @@ func Test_gmssl(t *testing.T) {
 
 // 启动服务端
 func ServerRun(needClientAuth bool) {
+	zclog.ClearDir("logs")
+	zcgologConfig := &zclog.Config{
+		LogFileDir:        "logs",
+		LogFileNamePrefix: "tlstest",
+		LogMod:            zclog.LOG_MODE_SERVER,
+		LogLevelGlobal:    zclog.LOG_LEVEL_DEBUG,
+	}
+	zclog.InitLogger(zcgologConfig)
 	// 导入tls配置
 	config, err := loadServerConfig(needClientAuth)
 	if err != nil {
@@ -54,7 +68,7 @@ func ServerRun(needClientAuth bool) {
 	// 定义tls监听器
 	ln, err := gmtls.Listen("tcp", ":50052", config)
 	if err != nil {
-		log.Print(err)
+		zclog.Println(err)
 		return
 	}
 	defer ln.Close()
@@ -81,7 +95,7 @@ func ClientRunGMSSL() {
 	// 读取sm2 ca证书
 	cacert, err := ioutil.ReadFile(SM2CaCertPath)
 	if err != nil {
-		log.Fatal().Err(err)
+		zclog.Fatal(err)
 	}
 	// 将sm2ca证书作为根证书加入证书池
 	// 即，客户端相信持有该ca颁发的证书的服务端
@@ -141,7 +155,7 @@ func ClientRunTls13() {
 	// 读取sm2 ca证书
 	cacert, err := ioutil.ReadFile(SM2CaCertPath)
 	if err != nil {
-		log.Fatal().Err(err)
+		zclog.Fatal(err)
 	}
 	// 将sm2ca证书作为根证书加入证书池
 	// 即，客户端相信持有该ca颁发的证书的服务端
@@ -224,4 +238,8 @@ func loadServerConfig(needClientAuth bool) (*gmtls.Config, error) {
 	}
 
 	return config, nil
+}
+
+func Test_clearLogs(t *testing.T) {
+	zclog.ClearDir("logs")
 }

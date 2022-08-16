@@ -23,8 +23,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"gitee.com/zhaochuninhefei/zcgolog/zclog"
 	"github.com/hxx258456/ccgo/x509"
-	"github.com/rs/zerolog/log"
 )
 
 // tls安全连接定义, 实现`net.Conn`接口
@@ -1258,10 +1258,10 @@ func (c *Conn) handlePostHandshakeMessage() error {
 
 	switch msg := msg.(type) {
 	case *newSessionTicketMsgTLS13:
-		log.Print("===== 客户端接收到 newSessionTicketMsgTLS13")
+		zclog.Print("===== 客户端接收到 newSessionTicketMsgTLS13")
 		return c.handleNewSessionTicket(msg)
 	case *keyUpdateMsg:
-		log.Print("===== 客户端/服务端接收到 keyUpdateMsg")
+		zclog.Print("===== 客户端/服务端接收到 keyUpdateMsg")
 		return c.handleKeyUpdate(msg)
 	default:
 		c.sendAlert(alertUnexpectedMessage)
@@ -1291,7 +1291,7 @@ func (c *Conn) handleKeyUpdate(keyUpdate *keyUpdateMsg) error {
 			c.out.setErrorLocked(err)
 			return nil
 		}
-		log.Print("===== 客户端/服务端发出 keyUpdateMsg")
+		zclog.Print("===== 客户端/服务端发出 keyUpdateMsg")
 		// 发出 keyUpdateMsg 之后才能派生新的己方通信机密并设置到连接out通道
 		newSecret := cipherSuite.nextTrafficSecret(c.out.trafficSecret)
 		c.out.setTrafficSecret(cipherSuite, newSecret)
@@ -1306,7 +1306,7 @@ func (c *Conn) handleKeyUpdate(keyUpdate *keyUpdateMsg) error {
 // has not yet completed. See SetDeadline, SetReadDeadline, and
 // SetWriteDeadline.
 func (c *Conn) Read(b []byte) (int, error) {
-	log.Print("===== tls连接读取到一条消息")
+	zclog.Print("===== tls连接读取到一条消息")
 	if err := c.Handshake(); err != nil {
 		return 0, err
 	}

@@ -7,10 +7,11 @@ package httptest_test
 import (
 	"fmt"
 	"io"
+	"log"
 
+	"gitee.com/zhaochuninhefei/zcgolog/zclog"
 	http "github.com/hxx258456/ccgo/gmhttp"
 	"github.com/hxx258456/ccgo/gmhttp/httptest"
-	"github.com/rs/zerolog/log"
 )
 
 func ExampleResponseRecorder() {
@@ -43,12 +44,12 @@ func ExampleServer() {
 
 	res, err := http.Get(ts.URL)
 	if err != nil {
-		log.Fatal().Err(err)
+		log.Fatal(err)
 	}
 	greeting, err := io.ReadAll(res.Body)
 	res.Body.Close()
 	if err != nil {
-		log.Fatal().Err(err)
+		log.Fatal(err)
 	}
 
 	fmt.Printf("%s", greeting)
@@ -56,6 +57,10 @@ func ExampleServer() {
 }
 
 func ExampleServer_hTTP2() {
+	zcgologConfig := &zclog.Config{
+		LogLevelGlobal: zclog.LOG_LEVEL_INFO,
+	}
+	zclog.InitLogger(zcgologConfig)
 	ts := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Hello, %s", r.Proto)
 	}))
@@ -65,12 +70,12 @@ func ExampleServer_hTTP2() {
 
 	res, err := ts.Client().Get(ts.URL)
 	if err != nil {
-		log.Fatal().Err(err)
+		log.Fatal(err)
 	}
 	greeting, err := io.ReadAll(res.Body)
 	res.Body.Close()
 	if err != nil {
-		log.Fatal().Err(err)
+		log.Fatal(err)
 	}
 	fmt.Printf("%s", greeting)
 
@@ -78,6 +83,10 @@ func ExampleServer_hTTP2() {
 }
 
 func ExampleNewTLSServer() {
+	zcgologConfig := &zclog.Config{
+		LogLevelGlobal: zclog.LOG_LEVEL_INFO,
+	}
+	zclog.InitLogger(zcgologConfig)
 	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "Hello, client")
 	}))
@@ -86,13 +95,13 @@ func ExampleNewTLSServer() {
 	client := ts.Client()
 	res, err := client.Get(ts.URL)
 	if err != nil {
-		log.Fatal().Err(err)
+		log.Fatal(err)
 	}
 
 	greeting, err := io.ReadAll(res.Body)
 	res.Body.Close()
 	if err != nil {
-		log.Fatal().Err(err)
+		log.Fatal(err)
 	}
 
 	fmt.Printf("%s", greeting)

@@ -1,4 +1,10 @@
-// Copyright 2022 s1ren@github.com/hxx258456.
+// Copyright (c) 2022 zhaochun
+// gmgo is licensed under Mulan PSL v2.
+// You can use this software according to the terms and conditions of the Mulan PSL v2.
+// You may obtain a copy of Mulan PSL v2 at:
+//          http://license.coscl.org.cn/MulanPSL2
+// THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+// See the Mulan PSL v2 for more details.
 
 package sm4
 
@@ -7,7 +13,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/rs/zerolog/log"
+	"gitee.com/zhaochuninhefei/zcgolog/zclog"
 	"golang.org/x/sys/cpu"
 )
 
@@ -41,10 +47,11 @@ func TestSm4(t *testing.T) {
 }
 
 func TestGcmAsmWithNonce(t *testing.T) {
-	log.Print("supportSM4:", supportSM4)
-	log.Print("supportsAES:", supportsAES)
-	log.Print("supportsGFMUL:", supportsGFMUL)
-	log.Print("useAVX2:", useAVX2)
+	zclog.Level = zclog.LOG_LEVEL_DEBUG
+	zclog.Debug("supportSM4:", supportSM4)
+	zclog.Debug("supportsAES:", supportsAES)
+	zclog.Debug("supportsGFMUL:", supportsGFMUL)
+	zclog.Debug("useAVX2:", useAVX2)
 
 	key := []byte{251, 160, 47, 88, 53, 110, 220, 7, 229, 174, 145, 250, 40, 34, 188, 237}
 	nonce := []byte{182, 244, 44, 22, 113, 249, 246, 127, 114, 94, 115, 60}
@@ -146,11 +153,12 @@ func BenchmarkSm4(t *testing.B) {
 }
 
 func TestCheckArch(t *testing.T) {
-	log.Print("supportSM4:", supportSM4)
-	log.Print("supportsAES:", supportsAES)
-	log.Print("supportsGFMUL:", supportsGFMUL)
-	log.Print("useAVX2:", useAVX2)
-	log.Print("arch:", runtime.GOARCH)
-	log.Print("cpu.X86.HasAVX2:", cpu.X86.HasAVX2)
-	log.Print("cpu.X86.HasBMI2:", cpu.X86.HasBMI2)
+	zclog.Level = zclog.LOG_LEVEL_DEBUG
+	zclog.Debug("supportSM4:", supportSM4)
+	zclog.Debug("supportsAES:", supportsAES)
+	zclog.Debug("supportsGFMUL:", supportsGFMUL)
+	zclog.Debug("useAVX2:", useAVX2)
+	zclog.Debug("arch:", runtime.GOARCH)
+	zclog.Debug("cpu.X86.HasAVX2:", cpu.X86.HasAVX2)
+	zclog.Debug("cpu.X86.HasBMI2:", cpu.X86.HasBMI2)
 }

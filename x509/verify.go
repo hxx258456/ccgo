@@ -21,7 +21,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/rs/zerolog/log"
+	log "gitee.com/zhaochuninhefei/zcgolog/zclog"
 )
 
 type InvalidReason int
@@ -581,7 +581,7 @@ func (c *Certificate) checkNameConstraints(count *int,
 func (c *Certificate) isValid(certType int, currentChain []*Certificate, opts *VerifyOptions) error {
 	// log.Debugf("===== x509/verify.go isValid c.NotAfter 3: %s", c.NotAfter.Format(time.RFC3339))
 	if len(c.UnhandledCriticalExtensions) > 0 {
-		log.Printf("===== x509/verify.go isValid 证书解析时有未完全处理的扩展ID: %#v", c.UnhandledCriticalExtensions)
+		log.Debugf("===== x509/verify.go isValid 证书解析时有未完全处理的扩展ID: %#v", c.UnhandledCriticalExtensions)
 		return UnhandledCriticalExtension{}
 	}
 	if len(currentChain) > 0 {
@@ -775,7 +775,7 @@ func (c *Certificate) Verify(opts VerifyOptions) (chains [][]*Certificate, err e
 		// 如果检查参数中包含可选的中间证书池，则先检查这些中间证书是否能够正常读取
 		intermediatesCert, err := opts.Intermediates.cert(i)
 		if err != nil {
-			return nil, fmt.Errorf("github.com/hxx258456/ccgo/x509: error fetching intermediate: %w", err)
+			return nil, fmt.Errorf("gitee.com/zhaochuninhefei/gmgo/x509: error fetching intermediate: %w", err)
 		}
 		if len(intermediatesCert.Raw) == 0 {
 			return nil, errNotParsed
