@@ -235,11 +235,16 @@ GroupSelection:
 		c.sendAlert(alertInternalError)
 		return err
 	}
-	log.Printf("===== 服务端使用曲线 %s 生成密钥交换算法参数", curve.Params().Name)
+	if curveOk && curve != nil {
+		log.Printf("===== 服务端使用曲线 %s 生成密钥交换算法参数", curve.Params().Name)
+	}
+
 	// 设置服务端密钥交换算法参数(曲线ID + 服务端公钥)
 	hs.hello.serverShare = keyShare{group: selectedGroup, data: params.PublicKey()}
 	// 根据客户端公钥计算共享密钥
-	log.Printf("===== 服务端使用曲线 %s 与客户端公钥计算共享密钥", curve.Params().Name)
+	if curveOk && curve != nil {
+		log.Printf("===== 服务端使用曲线 %s 与客户端公钥计算共享密钥", curve.Params().Name)
+	}
 	hs.sharedKey = params.SharedKey(clientKeyShare.data)
 	if hs.sharedKey == nil {
 		c.sendAlert(alertIllegalParameter)
