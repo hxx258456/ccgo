@@ -3,7 +3,6 @@ module github.com/hxx258456/ccgo
 go 1.17
 
 require (
-	gitee.com/zhaochuninhefei/zcgolog v0.0.14
 	github.com/census-instrumentation/opencensus-proto v0.2.1
 	github.com/cespare/xxhash/v2 v2.1.2
 	github.com/cncf/udpa/go v0.0.0-20210930031921-04548b0d99d4
@@ -35,6 +34,7 @@ require (
 
 require (
 	cloud.google.com/go v0.65.0 // indirect
+	gitee.com/zhaochuninhefei/zcgolog v0.0.14
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
