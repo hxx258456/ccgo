@@ -2,7 +2,9 @@ package sm2test
 
 import (
 	"crypto/rand"
+	"encoding/hex"
 	"fmt"
+	"math/big"
 	"testing"
 
 	"github.com/hxx258456/ccgo/sm2"
@@ -225,4 +227,59 @@ func convertPrivFromHard2Soft(privHard *sm2.PrivateKey) *sm2soft.PrivateKey {
 	privSoft.Y = privHard.Y
 	privSoft.Curve = privHard.Curve
 	return privSoft
+}
+
+// 根据已有加密信息生成密钥
+func TestGenerateSm2(t *testing.T) {
+	msg := []byte("test")
+
+	// 函数曲线使用p256
+	c := sm2.P256Sm2()
+
+	publicX_hex := "0ce2fa6e66521155f780573beb0e5f18d0aeea6b9a145f54e5c8c442efd15ecf"
+	publicX_byte, err := hex.DecodeString(publicX_hex)
+	if err != nil {
+		t.Error(err)
+	}
+	publicY_hex := "fa332850bffd6e06cbbd6e29ac851fe12da302c74550c3d75e24db54a2a1fdd7"
+	publicY_byte, err := hex.DecodeString(publicY_hex)
+	if err != nil {
+		t.Error(err)
+	}
+	x := big.Int{}
+	y := big.Int{}
+	// 公钥
+	public := sm2.PublicKey{
+		X:     x.SetBytes(publicX_byte),
+		Y:     y.SetBytes(publicY_byte),
+		Curve: c,
+	}
+
+	encByte, err := sm2.EncryptDefault(&public, msg, rand.Reader)
+	if err != nil {
+		t.Error(err)
+	}
+	fmt.Printf("加密结果: %x", encByte)
+	// encHex := "04090288425ca9800dda045f8bee4423f668cbbf2ad09b3aad4d7bb2ae7a0b2d0142dbaac88042a2c0c2c19e0c30d308a7e3e200692cd40d587aa409bba153083f8a37739de614648e22035d013df316af6ed4ba89ca2d2a7fb7b2deed7da51c789a72a6a7"
+	// encByte, err := hex.DecodeString(encHex)
+	// if err != nil {
+	// 	t.Error(err)
+	// }
+
+	private_hex := "0b15a775077e438bce6ebcb7b30c3e61d9909ee861568723661d4728ee701068"
+	private_byte, err := hex.DecodeString(private_hex)
+	if err != nil {
+		t.Error(err)
+	}
+	d := big.Int{}
+	private := sm2.PrivateKey{
+		PublicKey: public,
+		D:         d.SetBytes(private_byte),
+	}
+
+	decMsg, err := sm2.DecryptDefault(&private, encByte)
+	if err != nil {
+		t.Error(err)
+	}
+	fmt.Printf("解密结果: %s\n", decMsg)
 }
