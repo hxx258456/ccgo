@@ -11,14 +11,14 @@ import (
 	"io"
 )
 
-// 根据pkcs7标准填充明文
+// PKCS7Padding 根据pkcs7标准填充明文
 func PKCS7Padding(src []byte) []byte {
 	padding := BlockSize - len(src)%BlockSize
 	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
 	return append(src, padtext...)
 }
 
-// 根据pkcs7标准去除填充
+// PKCS7UnPadding 根据pkcs7标准去除填充
 func PKCS7UnPadding(src []byte) ([]byte, error) {
 	length := len(src)
 	if length == 0 {
@@ -39,7 +39,9 @@ func PKCS7UnPadding(src []byte) ([]byte, error) {
 	return src[:(length - unpadding)], nil
 }
 
-// sm4加密，CBC模式
+// Sm4EncryptCbc sm4加密，CBC模式
+//
+//goland:noinspection GoNameStartsWithPackageName
 func Sm4EncryptCbc(plainData, key []byte) (iv, encryptData []byte, err error) {
 	block, err := NewCipher(key)
 	if err != nil {
@@ -56,7 +58,9 @@ func Sm4EncryptCbc(plainData, key []byte) (iv, encryptData []byte, err error) {
 	return
 }
 
-// sm4解密，CBC模式
+// Sm4DecryptCbc sm4解密，CBC模式
+//
+//goland:noinspection GoNameStartsWithPackageName
 func Sm4DecryptCbc(encryptData, key, iv []byte) (plainData []byte, err error) {
 	block, err := NewCipher(key)
 	if err != nil {
@@ -77,7 +81,9 @@ func Sm4DecryptCbc(encryptData, key, iv []byte) (plainData []byte, err error) {
 	return
 }
 
-// sm4加密，CFB模式
+// Sm4EncryptCfb sm4加密，CFB模式
+//
+//goland:noinspection GoNameStartsWithPackageName
 func Sm4EncryptCfb(plainData, key []byte) (iv, encryptData []byte, err error) {
 	block, err := NewCipher(key)
 	if err != nil {
@@ -93,7 +99,9 @@ func Sm4EncryptCfb(plainData, key []byte) (iv, encryptData []byte, err error) {
 	return
 }
 
-// sm4解密，CFB模式
+// Sm4DecryptCfb sm4解密，CFB模式
+//
+//goland:noinspection GoNameStartsWithPackageName
 func Sm4DecryptCfb(encryptData, key, iv []byte) (plainData []byte, err error) {
 	block, err := NewCipher(key)
 	if err != nil {
@@ -105,7 +113,9 @@ func Sm4DecryptCfb(encryptData, key, iv []byte) (plainData []byte, err error) {
 	return
 }
 
-// sm4加密，OFB模式
+// Sm4EncryptOfb sm4加密，OFB模式
+//
+//goland:noinspection GoNameStartsWithPackageName
 func Sm4EncryptOfb(plainData, key []byte) (iv, encryptData []byte, err error) {
 	block, err := NewCipher(key)
 	if err != nil {
@@ -121,7 +131,9 @@ func Sm4EncryptOfb(plainData, key []byte) (iv, encryptData []byte, err error) {
 	return
 }
 
-// sm4解密，OFB模式
+// Sm4DecryptOfb sm4解密，OFB模式
+//
+//goland:noinspection GoNameStartsWithPackageName
 func Sm4DecryptOfb(encryptData, key, iv []byte) (plainData []byte, err error) {
 	block, err := NewCipher(key)
 	if err != nil {
@@ -133,9 +145,11 @@ func Sm4DecryptOfb(encryptData, key, iv []byte) (plainData []byte, err error) {
 	return
 }
 
-// sm4加密，GCM模式
+// Sm4EncryptGcm sm4加密，GCM模式
+//
+//goland:noinspection GoNameStartsWithPackageName
 func Sm4EncryptGcm(plainData, key []byte) (nonce, encryptData []byte, err error) {
-	block, err := NewCipher([]byte(key))
+	block, err := NewCipher(key)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -144,15 +158,20 @@ func Sm4EncryptGcm(plainData, key []byte) (nonce, encryptData []byte, err error)
 		return nil, nil, err
 	}
 	nonce = make([]byte, sm4gcm.NonceSize())
-	io.ReadFull(rand.Reader, nonce)
+	_, err = io.ReadFull(rand.Reader, nonce)
+	if err != nil {
+		return nil, nil, err
+	}
 	out := sm4gcm.Seal(nonce, nonce, plainData, nil)
 	encryptData = out[sm4gcm.NonceSize():]
 	return
 }
 
-// sm4解密，GCM模式
+// Sm4DecryptGcm sm4解密，GCM模式
+//
+//goland:noinspection GoNameStartsWithPackageName
 func Sm4DecryptGcm(encryptData, key, nonce []byte) ([]byte, error) {
-	block, err := NewCipher([]byte(key))
+	block, err := NewCipher(key)
 	if err != nil {
 		return nil, err
 	}
@@ -168,9 +187,11 @@ func Sm4DecryptGcm(encryptData, key, nonce []byte) ([]byte, error) {
 	return out, nil
 }
 
-// sm4加密，GCM模式
+// Sm4EncryptGcmWithNonce sm4加密，GCM模式
+//
+//goland:noinspection GoNameStartsWithPackageName
 func Sm4EncryptGcmWithNonce(plainData, key, nonce, dst []byte) (encryptData []byte, err error) {
-	block, err := NewCipher([]byte(key))
+	block, err := NewCipher(key)
 	if err != nil {
 		return nil, err
 	}
@@ -183,9 +204,11 @@ func Sm4EncryptGcmWithNonce(plainData, key, nonce, dst []byte) (encryptData []by
 	return
 }
 
-// sm4解密，GCM模式
+// Sm4DecryptGcmWithNonce sm4解密，GCM模式
+//
+//goland:noinspection GoNameStartsWithPackageName
 func Sm4DecryptGcmWithNonce(encryptData, key, nonce, dst []byte) ([]byte, error) {
-	block, err := NewCipher([]byte(key))
+	block, err := NewCipher(key)
 	if err != nil {
 		return nil, err
 	}

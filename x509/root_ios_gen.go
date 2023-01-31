@@ -21,11 +21,9 @@ import (
 	"bytes"
 	"compress/gzip"
 	"crypto/sha256"
-	"crypto/tls"
 	"encoding/pem"
 	"flag"
 	"fmt"
-	"github.com/hxx258456/ccgo/x509"
 	"go/format"
 	"io"
 	"log"
@@ -35,6 +33,10 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	tls "github.com/hxx258456/ccgo/gmtls"
+
+	"github.com/hxx258456/ccgo/x509"
 )
 
 func main() {
@@ -42,6 +44,7 @@ func main() {
 	var version = flag.String("version", "", "security_certificates version")
 	flag.Parse()
 	if *version == "" {
+		//goland:noinspection SqlNoDataSourceInspection
 		log.Fatal("Select the latest security_certificates version from " +
 			"https://opensource.apple.com/source/security_certificates/")
 	}

@@ -28,11 +28,12 @@ import (
 )
 
 // 使用pubkey，根据sigType选择对应的签名算法对sig进行验签。
-//  - sigType : 签名算法
-//  - pubkey : 公钥
-//  - hashFunc : 散列算法
-//  - signed : 签名内容
-//  - sig : 签名
+//   - sigType : 签名算法
+//   - pubkey : 公钥
+//   - hashFunc : 散列算法
+//   - signed : 签名内容
+//   - sig : 签名
+//
 // 已补充国密SM2分支
 // verifyHandshakeSignature verifies a signature against pre-hashed
 // (if required) handshake contents.
@@ -122,7 +123,9 @@ func signedMessage(sigHash x509.Hash, context string, transcript hash.Hash) []by
 }
 
 // 获取签名算法与散列算法
-//  已补充国密SM2签名算法分支
+//
+//	已补充国密SM2签名算法分支
+//
 // typeAndHashFromSignatureScheme returns the corresponding signature type and
 // crypto.Hash for a given TLS SignatureScheme.
 func typeAndHashFromSignatureScheme(signatureAlgorithm SignatureScheme) (sigType uint8, hash x509.Hash, err error) {

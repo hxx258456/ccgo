@@ -174,6 +174,7 @@ func fromBase10(base10 string) *big.Int {
 	return i
 }
 
+//goland:noinspection GoUnusedFunction
 func bigFromHexString(s string) *big.Int {
 	ret := new(big.Int)
 	ret.SetString(s, 16)
@@ -602,6 +603,7 @@ func TestCreateSelfSignedCertificate(t *testing.T) {
 
 	for _, test := range tests {
 		commonName := "test.example.com"
+		//goland:noinspection HttpUrlsUsage
 		template := Certificate{
 			// SerialNumber is negative to ensure that negative
 			// values are parsed. This is due to the prevalence of
@@ -1493,6 +1495,7 @@ func TestCertificateRequestOverrides(t *testing.T) {
 	// extra extensions should be added to it rather than creating a CSR
 	// with two extension attributes.
 
+	//goland:noinspection GoDeprecation
 	template.Attributes = []pkix.AttributeTypeAndValueSET{
 		{
 			Type: oidExtensionRequest,
@@ -1508,10 +1511,12 @@ func TestCertificateRequestOverrides(t *testing.T) {
 	}
 
 	csr = marshalAndParseCSR(t, &template)
+	//goland:noinspection GoDeprecation
 	if l := len(csr.Attributes); l != 1 {
 		t.Errorf("incorrect number of attributes: %d\n", l)
 	}
 
+	//goland:noinspection GoDeprecation
 	if !csr.Attributes[0].Type.Equal(oidExtensionRequest) ||
 		len(csr.Attributes[0].Value) != 1 ||
 		len(csr.Attributes[0].Value[0]) != 2 {
@@ -1524,6 +1529,7 @@ func TestCertificateRequestOverrides(t *testing.T) {
 	}
 
 	// Extensions in Attributes should override those in ExtraExtensions.
+	//goland:noinspection GoDeprecation
 	template.Attributes[0].Value[0] = append(template.Attributes[0].Value[0], pkix.AttributeTypeAndValue{
 		Type:  oidExtensionSubjectAltName,
 		Value: sanContents2,
@@ -1797,16 +1803,18 @@ func TestInsecureAlgorithmErrorString(t *testing.T) {
 }
 
 // These CSR was generated with OpenSSL:
-//  openssl req -out CSR.csr -new -sha256 -nodes -keyout privateKey.key -config openssl.cnf
+//
+//	openssl req -out CSR.csr -new -sha256 -nodes -keyout privateKey.key -config openssl.cnf
 //
 // With openssl.cnf containing the following sections:
-//   [ v3_req ]
-//   basicConstraints = CA:FALSE
-//   keyUsage = nonRepudiation, digitalSignature, keyEncipherment
-//   subjectAltName = email:gopher@golang.org,DNS:test.example.com
-//   [ req_attributes ]
-//   challengePassword = ignored challenge
-//   unstructuredName  = ignored unstructured name
+//
+//	[ v3_req ]
+//	basicConstraints = CA:FALSE
+//	keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+//	subjectAltName = email:gopher@golang.org,DNS:test.example.com
+//	[ req_attributes ]
+//	challengePassword = ignored challenge
+//	unstructuredName  = ignored unstructured name
 var csrBase64Array = [...]string{
 	// Just [ v3_req ]
 	"MIIDHDCCAgQCAQAwfjELMAkGA1UEBhMCQVUxEzARBgNVBAgMClNvbWUtU3RhdGUxITAfBgNVBAoMGEludGVybmV0IFdpZGdpdHMgUHR5IEx0ZDEUMBIGA1UEAwwLQ29tbW9uIE5hbWUxITAfBgkqhkiG9w0BCQEWEnRlc3RAZW1haWwuYWRkcmVzczCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAK1GY4YFx2ujlZEOJxQVYmsjUnLsd5nFVnNpLE4cV+77sgv9NPNlB8uhn3MXt5leD34rm/2BisCHOifPucYlSrszo2beuKhvwn4+2FxDmWtBEMu/QA16L5IvoOfYZm/gJTsPwKDqvaR0tTU67a9OtxwNTBMI56YKtmwd/o8d3hYv9cg+9ZGAZ/gKONcg/OWYx/XRh6bd0g8DMbCikpWgXKDsvvK1Nk+VtkDO1JxuBaj4Lz/p/MifTfnHoqHxWOWl4EaTs4Ychxsv34/rSj1KD1tJqorIv5Xv2aqv4sjxfbrYzX4kvS5SC1goIovLnhj5UjmQ3Qy8u65eow/LLWw+YFcCAwEAAaBZMFcGCSqGSIb3DQEJDjFKMEgwCQYDVR0TBAIwADALBgNVHQ8EBAMCBeAwLgYDVR0RBCcwJYERZ29waGVyQGdvbGFuZy5vcmeCEHRlc3QuZXhhbXBsZS5jb20wDQYJKoZIhvcNAQELBQADggEBAB6VPMRrchvNW61Tokyq3ZvO6/NoGIbuwUn54q6l5VZW0Ep5Nq8juhegSSnaJ0jrovmUgKDN9vEo2KxuAtwG6udS6Ami3zP+hRd4k9Q8djJPb78nrjzWiindLK5Fps9U5mMoi1ER8ViveyAOTfnZt/jsKUaRsscY2FzE9t9/o5moE6LTcHUS4Ap1eheR+J72WOnQYn3cifYaemsA9MJuLko+kQ6xseqttbh9zjqd9fiCSh/LNkzos9c+mg2yMADitaZinAh+HZi50ooEbjaT3erNq9O6RqwJlgD00g6MQdoz9bTAryCUhCQfkIaepmQ7BxS0pqWNW3MMwfDwx/Snz6g=",
@@ -2036,6 +2044,7 @@ func TestPKIXNameString(t *testing.T) {
 	}
 
 	// Check that parsed non-standard attributes are printed.
+	//goland:noinspection GoDeprecation
 	rdns := pkix.Name{
 		Locality: []string{"Gophertown"},
 		ExtraNames: []pkix.AttributeTypeAndValue{
@@ -2345,6 +2354,7 @@ func TestMultipleURLsInCRLDP(t *testing.T) {
 		t.Fatalf("failed to parse certificate: %s", err)
 	}
 
+	//goland:noinspection GoDeprecation
 	want := []string{
 		"http://epscd.catcert.net/crl/ec-acc.crl",
 		"http://epscd2.catcert.net/crl/ec-acc.crl",
@@ -3219,7 +3229,6 @@ func TestAuthKeyIdOptional(t *testing.T) {
 }
 
 // 添加国米相关测试案例
-//
 func TestX509(t *testing.T) {
 	// 生成sm2密钥对
 	// priv, err := sm2.GenerateKey(nil)
@@ -3277,6 +3286,7 @@ func TestX509(t *testing.T) {
 	extraExtensionData := []byte("extra extension")
 	commonName := "pangzi.com"
 	// 定义证书模板
+	//goland:noinspection GoDeprecation
 	template := Certificate{
 		// SerialNumber is negative to ensure that negative
 		// values are parsed. This is due to the prevalence of
@@ -3428,6 +3438,7 @@ func TestX509WithFile(t *testing.T) {
 	extraExtensionData := []byte("extra extension")
 	commonName := "test.pangzi.com"
 	// 定义证书模板
+	//goland:noinspection GoDeprecation
 	template := Certificate{
 		SerialNumber: big.NewInt(-1),
 		Subject: pkix.Name{
@@ -3546,6 +3557,7 @@ func createCACert() (*sm2.PrivateKey, *Certificate, error) {
 		return nil, nil, err
 	}
 	userKeyUsage := KeyUsageCertSign + KeyUsageCRLSign
+	//goland:noinspection GoDeprecation
 	userExtKeyUsage := []ExtKeyUsage{
 		// ExtKeyUsageAny,
 		// ExtKeyUsageServerAuth,
@@ -3625,6 +3637,7 @@ func createEncCert(caPriv *sm2.PrivateKey, caCert *Certificate) error {
 		return err
 	}
 	userKeyUsage := KeyUsageKeyEncipherment + KeyUsageDataEncipherment
+	//goland:noinspection GoDeprecation
 	userExtKeyUsage := []ExtKeyUsage{
 		// ExtKeyUsageAny,
 		// ExtKeyUsageServerAuth,
@@ -3767,6 +3780,7 @@ func createCertSignParent(cn string, o string, c string, st string, bcs bool, is
 	return cert, nil
 }
 
+//goland:noinspection GoDeprecation
 func createTemplate(cn string, o string, c string, st string, bcs bool, isca bool, sId []byte,
 	ku KeyUsage, ekus []ExtKeyUsage, uekus []asn1.ObjectIdentifier,
 	certType string, pubKey *sm2.PublicKey, privKey *sm2.PrivateKey) *Certificate {

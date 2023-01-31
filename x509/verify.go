@@ -574,9 +574,11 @@ func (c *Certificate) checkNameConstraints(count *int,
 }
 
 // isValid 对 证书c 执行有效性检查，证书c是当前证书莲currentChain的候选者。
-//  certType 证书c在证书链中的位置(0:子证书, 1:中间证书, 2:根证书)
-//  currentChain 当前证书链
-//  opts 校验参数
+//
+//	certType 证书c在证书链中的位置(0:子证书, 1:中间证书, 2:根证书)
+//	currentChain 当前证书链
+//	opts 校验参数
+//
 // isValid performs validity checks on c given that it is a candidate to append to the chain in currentChain.
 func (c *Certificate) isValid(certType int, currentChain []*Certificate, opts *VerifyOptions) error {
 	// log.Debugf("===== x509/verify.go isValid c.NotAfter 3: %s", c.NotAfter.Format(time.RFC3339))
@@ -731,7 +733,7 @@ func (c *Certificate) isValid(certType int, currentChain []*Certificate, opts *V
 	return nil
 }
 
-// Verify尝试构建证书c的有效信任链。
+// Verify 尝试构建证书c的有效信任链。
 // 成功时将返回验证成功的证书链，其中第一个证书即c自身，最后一个是opts.Roots中的某个根证书。
 // Verify attempts to verify c by building one or more chains from c to a
 // certificate in opts.Roots, using certificates in opts.Intermediates if
@@ -1046,7 +1048,7 @@ func toLowerCaseASCII(in string) string {
 	return string(out)
 }
 
-// 检查证书域名(或IP)
+// VerifyHostname 检查证书域名(或IP)
 // VerifyHostname returns nil if c is a valid certificate for the named host.
 // Otherwise it returns an error describing the mismatch.
 //

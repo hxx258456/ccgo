@@ -25,12 +25,12 @@ import (
 )
 
 var (
-	default_uid = []byte{0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38}
-	C1C3C2      = 0
-	C1C2C3      = 1
+	defaultUid = []byte{0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38}
+	C1C3C2     = 0
+	C1C2C3     = 1
 )
 
-// SM2公钥结构体
+// PublicKey SM2公钥结构体
 type PublicKey struct {
 	elliptic.Curve          // 椭圆曲线
 	X, Y           *big.Int // 公钥座标
@@ -49,7 +49,7 @@ func (pub *PublicKey) Equal(x crypto.PublicKey) bool {
 		pub.Curve == xx.Curve
 }
 
-// SM2私钥结构体
+// PrivateKey SM2私钥结构体
 type PrivateKey struct {
 	PublicKey          // 公钥
 	D         *big.Int // 私钥，[1,n-1]区间的随机数
@@ -62,7 +62,7 @@ type sm2Cipher struct {
 	CipherText  []byte
 }
 
-// The SM2's private key contains the public key
+// Public The SM2's private key contains the public key
 func (priv *PrivateKey) Public() crypto.PublicKey {
 	return &priv.PublicKey
 }
@@ -81,11 +81,14 @@ var two = new(big.Int).SetInt64(2)
 
 // sign format = 30 + len(z) + 02 + len(r) + r + 02 + len(s) + s, z being what follows its size, ie 02+len(r)+r+02+len(s)+s
 
+// Sign 使用priv私钥对签名内容摘要做SM2签名，参数signer目前没有使用，但仍要求传入外部对明文消息做摘要的散列算法。
 // 使用priv私钥对签名内容摘要做SM2签名，参数signer目前没有使用，但仍要求传入外部对明文消息做摘要的散列算法。
 // 返回的签名为DER字节数组，对(r,s)做了asn1编码。
-//  - random : 随机数获取用, 如 rand.Reader
-//  - signContentDigest : 签名内容摘要(散列值)
-//  - signer : 外部对签名内容进行摘要计算使用的散列函数
+//   - random : 随机数获取用, 如 rand.Reader
+//   - signContentDigest : 签名内容摘要(散列值)
+//   - signer : 外部对签名内容进行摘要计算使用的散列函数
+//
+//goland:noinspection GoUnusedParameter
 func (priv *PrivateKey) Sign(random io.Reader, signContentDigest []byte, signer crypto.SignerOpts) ([]byte, error) {
 	r, s, err := Sm2Sign(priv, signContentDigest, nil, random)
 	if err != nil {
@@ -99,15 +102,17 @@ func (priv *PrivateKey) Sign(random io.Reader, signContentDigest []byte, signer 
 	return b.Bytes()
 }
 
-// 使用私钥priv对一个hash值进行签名。
+// SignASN1 使用私钥priv对一个hash值进行签名。
 // 返回的签名为DER字节数组，对(r,s)做了asn1编码。
+//
+//goland:noinspection GoUnusedExportedFunction
 func SignASN1(rand io.Reader, priv *PrivateKey, hash []byte) ([]byte, error) {
 	return priv.Sign(rand, hash, nil)
 }
 
-// 使用pub公钥对签名sig做验签。
-//  - signContentDigest : 签名内容摘要(散列值)
-//  - sig : 签名DER字节数组(对(r,s)做了asn1编码，因此会先做asn1解码)
+// Verify 使用pub公钥对签名sig做验签。
+//   - signContentDigest : 签名内容摘要(散列值)
+//   - sig : 签名DER字节数组(对(r,s)做了asn1编码，因此会先做asn1解码)
 func (pub *PublicKey) Verify(signContentDigest []byte, sig []byte) bool {
 	var (
 		r, s  = &big.Int{}, &big.Int{}
@@ -121,21 +126,23 @@ func (pub *PublicKey) Verify(signContentDigest []byte, sig []byte) bool {
 		!inner.Empty() {
 		return false
 	}
-	return Sm2Verify(pub, signContentDigest, default_uid, r, s)
+	return Sm2Verify(pub, signContentDigest, defaultUid, r, s)
 }
 
-// 使用公钥pub对hash和sig进行验签。
-//  - pub 公钥
-//  - hash 签名内容摘要(散列值)
-//  - sig 签名DER字节数组(对(r,s)做了asn1编码，因此会先做asn1解码)
+// VerifyASN1 使用公钥pub对hash和sig进行验签。
+//   - pub 公钥
+//   - hash 签名内容摘要(散列值)
+//   - sig 签名DER字节数组(对(r,s)做了asn1编码，因此会先做asn1解码)
+//
+//goland:noinspection GoUnusedExportedFunction
 func VerifyASN1(pub *PublicKey, hash, sig []byte) bool {
 	return pub.Verify(hash, sig)
 }
 
-// 对签名内容进行SM3摘要计算，摘要计算前混入sm2椭圆曲线部分参数与公钥并预散列一次。
+// Sm3Digest 对签名内容进行SM3摘要计算，摘要计算前混入sm2椭圆曲线部分参数与公钥并预散列一次。
 func (pub *PublicKey) Sm3Digest(msg, uid []byte) ([]byte, error) {
 	if len(uid) == 0 {
-		uid = default_uid
+		uid = defaultUid
 	}
 
 	za, err := ZA(pub, uid)
@@ -153,17 +160,18 @@ func (pub *PublicKey) Sm3Digest(msg, uid []byte) ([]byte, error) {
 
 //****************************Encryption algorithm****************************//
 
-// sm2加密，C1C3C2，asn1编码
+// EncryptAsn1 sm2加密，C1C3C2，asn1编码
 func (pub *PublicKey) EncryptAsn1(data []byte, random io.Reader) ([]byte, error) {
 	return EncryptAsn1(pub, data, random)
 }
 
-// sm2解密，C1C3C2，asn1解码
+// DecryptAsn1 sm2解密，C1C3C2，asn1解码
 func (priv *PrivateKey) DecryptAsn1(data []byte) ([]byte, error) {
 	return DecryptAsn1(priv, data)
 }
 
-//**************************Key agreement algorithm**************************//
+// **************************Key agreement algorithm**************************//
+
 // KeyExchangeB 协商第二部，用户B调用， 返回共享密钥k
 func KeyExchangeB(klen int, ida, idb []byte, priB *PrivateKey, pubA *PublicKey, rpri *PrivateKey, rpubA *PublicKey) (k, s1, s2 []byte, err error) {
 	return keyExchange(klen, ida, idb, priB, pubA, rpri, rpubA, false)
@@ -176,11 +184,11 @@ func KeyExchangeA(klen int, ida, idb []byte, priA *PrivateKey, pubB *PublicKey, 
 
 //****************************************************************************//
 
-// SM2签名
-//  - priv : 签名私钥 *sm2.PrivateKey
-//  - signContentDigest : 签名内容摘要(散列值)
-//  - uid : 内部混合摘要计算用uid, 长度16的字节数组，可以传 nil
-//  - random : 随机数获取用
+// Sm2Sign SM2签名
+//   - priv : 签名私钥 *sm2.PrivateKey
+//   - signContentDigest : 签名内容摘要(散列值)
+//   - uid : 内部混合摘要计算用uid, 长度16的字节数组，可以传 nil
+//   - random : 随机数获取用
 func Sm2Sign(priv *PrivateKey, signContentDigest, uid []byte, random io.Reader) (r, s *big.Int, err error) {
 	// 对签名内容进行摘要计算
 	digest, err := priv.PublicKey.Sm3Digest(signContentDigest, uid)
@@ -237,11 +245,11 @@ func Sm2Sign(priv *PrivateKey, signContentDigest, uid []byte, random io.Reader) 
 	return
 }
 
-// SM2验签
-//  - pub : 验签公钥, *sm2.PublicKey
-//  - signContentDigest : 签名内容摘要(散列值)
-//  - uid : 内部混合摘要计算用uid, 长度16的字节数组，可以传 nil
-//  - r, s : 签名
+// Sm2Verify SM2验签
+//   - pub : 验签公钥, *sm2.PublicKey
+//   - signContentDigest : 签名内容摘要(散列值)
+//   - uid : 内部混合摘要计算用uid, 长度16的字节数组，可以传 nil
+//   - r, s : 签名
 func Sm2Verify(pub *PublicKey, signContentDigest, uid []byte, r, s *big.Int) bool {
 	c := pub.Curve
 	N := c.Params().N
@@ -253,7 +261,7 @@ func Sm2Verify(pub *PublicKey, signContentDigest, uid []byte, r, s *big.Int) boo
 		return false
 	}
 	if len(uid) == 0 {
-		uid = default_uid
+		uid = defaultUid
 	}
 	// 获取za: sm3(ENTLA || IDA || a || b || xG || yG || xA || yA)
 	za, err := ZA(pub, uid)
@@ -286,10 +294,12 @@ func Sm2Verify(pub *PublicKey, signContentDigest, uid []byte, r, s *big.Int) boo
 	return x.Cmp(r) == 0
 }
 
-// SM2验签
-//  - pub : 验签公钥, *sm2.PublicKey
-//  - hash : 签名内容摘要(散列值)
-//  - r, s : 签名
+// Verify SM2验签
+//   - pub : 验签公钥, *sm2.PublicKey
+//   - hash : 签名内容摘要(散列值)
+//   - r, s : 签名
+//
+//goland:noinspection GoUnusedExportedFunction
 func Verify(pub *PublicKey, hash []byte, r, s *big.Int) bool {
 	return Sm2Verify(pub, hash, nil, r, s)
 }
@@ -332,7 +342,7 @@ func Verify(pub *PublicKey, hash []byte, r, s *big.Int) bool {
 // 	return x.Cmp(r) == 0
 // }
 
-// sm2非对称加密，支持C1C3C2(mode = 0)与C1C2C3(mode = 1)两种模式，默认使用C1C3C2模式。
+// Encrypt sm2非对称加密，支持C1C3C2(mode = 0)与C1C2C3(mode = 1)两种模式，默认使用C1C3C2模式。
 // 不同的模式表示不同的密文结构，其中C1C2C3的意义：
 // C1 : sm2椭圆曲线上的某个点，每次加密得到的点不一样
 // C2 : 密文
@@ -421,7 +431,7 @@ func Encrypt(pub *PublicKey, data []byte, random io.Reader, mode int) ([]byte, e
 	}
 }
 
-// sm2非对称解密
+// DecryptAsn1 sm2解密，解析asn.1编码格式的密文内容
 func Decrypt(priv *PrivateKey, data []byte, mode int) ([]byte, error) {
 	switch mode {
 	case C1C3C2:
@@ -461,7 +471,7 @@ func Decrypt(priv *PrivateKey, data []byte, mode int) ([]byte, error) {
 	// 使用密钥派生函数kdf，基于P计算派生密钥 c
 	c, ok := kdf(length, x2Buf, y2Buf)
 	if !ok {
-		return nil, errors.New("Decrypt: failed to decrypt")
+		return nil, errors.New("decrypt: failed to decrypt")
 	}
 	// 使用派生密钥c对C2部分做异或计算解密
 	// 解密结果覆盖到c中，此时c即明文
@@ -475,7 +485,7 @@ func Decrypt(priv *PrivateKey, data []byte, mode int) ([]byte, error) {
 	tm = append(tm, y2Buf...)
 	h := sm3.Sm3Sum(tm)
 	if !bytes.Equal(h, data[64:96]) {
-		return c, errors.New("Decrypt: failed to decrypt")
+		return c, errors.New("decrypt: failed to decrypt")
 	}
 	return c, nil
 }
@@ -592,9 +602,7 @@ func zeroByteSlice() []byte {
 	}
 }
 
-/*
-sm2加密，返回asn.1编码格式的密文内容
-*/
+// EncryptAsn1 sm2加密，返回asn.1编码格式的密文内容
 func EncryptAsn1(pub *PublicKey, data []byte, rand io.Reader) ([]byte, error) {
 	cipher, err := Encrypt(pub, data, rand, C1C3C2)
 	if err != nil {
@@ -603,9 +611,7 @@ func EncryptAsn1(pub *PublicKey, data []byte, rand io.Reader) ([]byte, error) {
 	return CipherMarshal(cipher)
 }
 
-/*
-sm2解密，解析asn.1编码格式的密文内容
-*/
+// DecryptAsn1 sm2解密，解析asn.1编码格式的密文内容
 func DecryptAsn1(pub *PrivateKey, data []byte) ([]byte, error) {
 	cipher, err := CipherUnmarshal(data)
 	if err != nil {
@@ -614,14 +620,13 @@ func DecryptAsn1(pub *PrivateKey, data []byte) ([]byte, error) {
 	return Decrypt(pub, cipher, C1C3C2)
 }
 
-/*
-*sm2密文转asn.1编码格式
-*sm2密文结构如下:
-*  x
-*  y
-*  hash
-*  CipherText
- */
+// CipherMarshal sm2密文转asn.1编码格式
+//
+//	sm2密文结构如下:
+//	- x
+//	- y
+//	- hash
+//	- CipherText
 func CipherMarshal(data []byte) ([]byte, error) {
 	data = data[1:]
 	x := new(big.Int).SetBytes(data[:32])
@@ -631,9 +636,7 @@ func CipherMarshal(data []byte) ([]byte, error) {
 	return asn1.Marshal(sm2Cipher{x, y, hash, cipherText})
 }
 
-/*
-sm2密文asn.1编码格式转C1|C3|C2拼接格式
-*/
+// CipherUnmarshal sm2密文asn.1编码格式转C1|C3|C2拼接格式
 func CipherUnmarshal(data []byte) ([]byte, error) {
 	var cipher sm2Cipher
 	_, err := asn1.Unmarshal(data, &cipher)
@@ -684,9 +687,9 @@ func keXHat(x *big.Int) (xul *big.Int) {
 }
 
 func BytesCombine(pBytes ...[]byte) []byte {
-	len := len(pBytes)
-	s := make([][]byte, len)
-	for index := 0; index < len; index++ {
+	length := len(pBytes)
+	s := make([][]byte, length)
+	for index := 0; index < length; index++ {
 		s[index] = pBytes[index]
 	}
 	sep := []byte("")
@@ -745,7 +748,7 @@ func randFieldElement(c elliptic.Curve, random io.Reader) (k *big.Int, err error
 	return
 }
 
-// 基于P256Sm2曲线生成sm2的公私钥
+// GenerateKey 基于P256Sm2曲线生成sm2的公私钥
 func GenerateKey(random io.Reader) (*PrivateKey, error) {
 	c := P256Sm2()
 	if random == nil {
@@ -796,7 +799,7 @@ func getLastBit(a *big.Int) uint {
 	return a.Bit(0)
 }
 
-// crypto.Decrypter
+// Decrypt crypto.Decrypter
 func (priv *PrivateKey) Decrypt(_ io.Reader, msg []byte, _ crypto.DecrypterOpts) (plaintext []byte, err error) {
 	return Decrypt(priv, msg, C1C3C2)
 }

@@ -53,7 +53,7 @@ func initP256Sm2() {
 	sm2P256FromBig(&sm2P256.b, sm2P256.B)
 }
 
-// 获取SM2P256椭圆曲线
+// P256Sm2 获取SM2P256椭圆曲线
 // 该曲线是一个单例
 func P256Sm2() elliptic.Curve {
 	// 为确保sm2P256是一个单例，这里只初始化一次sm2P256
@@ -61,12 +61,12 @@ func P256Sm2() elliptic.Curve {
 	return sm2P256
 }
 
-// 获取SM2P256椭圆曲线的曲线参数
+// Params 获取SM2P256椭圆曲线的曲线参数
 func (curve sm2P256Curve) Params() *elliptic.CurveParams {
 	return sm2P256.CurveParams
 }
 
-// y^2 = x^3 + ax + b
+// IsOnCurve y^2 = x^3 + ax + b
 // 判断给定的X,Y座标是否在sm2P256Curve曲线上
 func (curve sm2P256Curve) IsOnCurve(X, Y *big.Int) bool {
 	var a, x, y, y2, x3 sm2P256FieldElement
@@ -767,8 +767,9 @@ func sm2P256Square(b, a *sm2P256FieldElement) {
 }
 
 // nonZeroToAllOnes returns:
-//   0xffffffff for 0 < x <= 2**31
-//   0 for x == 0 or x > 2**31.
+//
+//	0xffffffff for 0 < x <= 2**31
+//	0 for x == 0 or x > 2**31.
 func nonZeroToAllOnes(x uint32) uint32 {
 	return ((x - 1) >> 31) - 1
 }
@@ -1077,7 +1078,7 @@ func sm2GenrateWNaf(b []byte) []int8 {
 		}
 		length += pos
 		wnaf[length] = int8(digit)
-		pos = int(width)
+		pos = width
 	}
 	if len(wnaf) > length+1 {
 		// t := make([]int8, length+1, length+1)

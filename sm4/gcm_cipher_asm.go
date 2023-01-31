@@ -18,11 +18,11 @@ var _ gcmAble = (*sm4CipherAsm)(nil)
 
 // NewGCM returns the SM4 cipher wrapped in Galois Counter Mode. This is only
 // called by crypto/cipher.NewGCM via the gcmAble interface.
-func (c *sm4CipherAsm) NewGCM(nonceSize, tagSize int) (cipher.AEAD, error) {
+func (sm4c *sm4CipherAsm) NewGCM(nonceSize, tagSize int) (cipher.AEAD, error) {
 	// log.Print("sm4.NewGCM in sm4/gcm_cipher_asm.go")
 	var key [gcmBlockSize]byte
-	c.Encrypt(key[:], key[:])
-	g := &gcm{cipher: c, nonceSize: nonceSize, tagSize: tagSize}
+	sm4c.Encrypt(key[:], key[:])
+	g := &gcm{cipher: sm4c, nonceSize: nonceSize, tagSize: tagSize}
 	// We precompute 16 multiples of |key|. However, when we do lookups
 	// into this table we'll be using bits from a field element and
 	// therefore the bits will be in the reverse order. So normally one
@@ -45,10 +45,11 @@ func (c *sm4CipherAsm) NewGCM(nonceSize, tagSize int) (cipher.AEAD, error) {
 // gcmFieldElement represents a value in GF(2¹²⁸). In order to reflect the GCM
 // standard and make binary.BigEndian suitable for marshaling these values, the
 // bits are stored in big endian order. For example:
-//   the coefficient of x⁰ can be obtained by v.low >> 63.
-//   the coefficient of x⁶³ can be obtained by v.low & 1.
-//   the coefficient of x⁶⁴ can be obtained by v.high >> 63.
-//   the coefficient of x¹²⁷ can be obtained by v.high & 1.
+//
+//	the coefficient of x⁰ can be obtained by v.low >> 63.
+//	the coefficient of x⁶³ can be obtained by v.low & 1.
+//	the coefficient of x⁶⁴ can be obtained by v.high >> 63.
+//	the coefficient of x¹²⁷ can be obtained by v.high & 1.
 type gcmFieldElement struct {
 	low, high uint64
 }

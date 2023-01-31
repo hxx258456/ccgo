@@ -49,7 +49,7 @@ func GetH(key []byte) (H []byte) {
 	return H
 }
 
-//ut = a + b
+// ut = a + b
 func addition(a, b []byte) (out []byte) {
 	Len := len(a)
 	if Len != len(b) {
@@ -107,7 +107,7 @@ func multiplication(X, Y []byte) (Z []byte) {
 
 func GHASH(H []byte, A []byte, C []byte) (X []byte) {
 
-	calculm_v := func(m, v int) (int, int) {
+	calculmV := func(m, v int) (int, int) {
 		if m == 0 && v != 0 {
 			m = 1
 			v = v * 8
@@ -124,11 +124,11 @@ func GHASH(H []byte, A []byte, C []byte) (X []byte) {
 	}
 	m := len(A) / BlockSize
 	v := len(A) % BlockSize
-	m, v = calculm_v(m, v)
+	m, v = calculmV(m, v)
 
 	n := len(C) / BlockSize
-	u := (len(C) % BlockSize)
-	n, u = calculm_v(n, u)
+	u := len(C) % BlockSize
+	n, u = calculmV(n, u)
 
 	//i=0
 	X = make([]byte, BlockSize*(m+n+2)) //X0 = 0
@@ -195,10 +195,10 @@ func GetY0(H, IV []byte) []byte {
 	}
 }
 
-func incr(n int, Y_i []byte) (Y_ii []byte) {
+func incr(n int, YI []byte) (YIi []byte) {
 
-	Y_ii = make([]byte, BlockSize*n)
-	copy(Y_ii, Y_i)
+	YIi = make([]byte, BlockSize*n)
+	copy(YIi, YI)
 
 	addYone := func(yi, yii []byte) {
 		copy(yii[:], yi[:])
@@ -226,9 +226,9 @@ func incr(n int, Y_i []byte) (Y_ii []byte) {
 		}
 	}
 	for i := 1; i < n; i++ { //2^32
-		addYone(Y_ii[(i-1)*BlockSize:(i-1)*BlockSize+BlockSize], Y_ii[i*BlockSize:i*BlockSize+BlockSize])
+		addYone(YIi[(i-1)*BlockSize:(i-1)*BlockSize+BlockSize], YIi[i*BlockSize:i*BlockSize+BlockSize])
 	}
-	return Y_ii
+	return YIi
 }
 
 func MSB(len int, S []byte) (out []byte) {
@@ -243,7 +243,7 @@ func MSB(len int, S []byte) (out []byte) {
 //
 // return: 密文, 鉴别标签
 func GCMEncrypt(K, IV, P, A []byte) (C, T []byte) {
-	calculm_v := func(m, v int) (int, int) {
+	calculmV := func(m, v int) (int, int) {
 		if m == 0 && v != 0 {
 			m = 1
 			v = v * 8
@@ -260,7 +260,7 @@ func GCMEncrypt(K, IV, P, A []byte) (C, T []byte) {
 	}
 	n := len(P) / BlockSize
 	u := len(P) % BlockSize
-	n, u = calculm_v(n, u)
+	n, u = calculmV(n, u)
 
 	// a) 通过对“0”分组的加密得到 GHASH泛杂凑函数的子密钥
 	H := GetH(K)
@@ -296,7 +296,7 @@ func GCMEncrypt(K, IV, P, A []byte) (C, T []byte) {
 }
 
 func GCMDecrypt(K, IV, C, A []byte) (P, _T []byte) {
-	calculm_v := func(m, v int) (int, int) {
+	calculmV := func(m, v int) (int, int) {
 		if m == 0 && v != 0 {
 			m = 1
 			v = v * 8
@@ -327,7 +327,7 @@ func GCMDecrypt(K, IV, C, A []byte) (P, _T []byte) {
 
 	n := len(C) / BlockSize
 	u := len(C) % BlockSize
-	n, u = calculm_v(n, u)
+	n, u = calculmV(n, u)
 	// Y := make([]byte, BlockSize*(n+1))
 	Y := incr(n+1, Y0)
 

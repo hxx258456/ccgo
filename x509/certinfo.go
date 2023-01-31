@@ -541,6 +541,8 @@ func CertificateText(cert *Certificate) (string, error) {
 // CertificateRequestText returns a human-readable string representation
 // of the certificate request csr. The format is similar (but not identical)
 // to the OpenSSL way of printing certificates.
+//
+//goland:noinspection GoUnusedExportedFunction
 func CertificateRequestText(csr *CertificateRequest) (string, error) {
 	var buf bytes.Buffer
 	buf.Grow(4096) // 4KiB should be enough

@@ -5,12 +5,15 @@ package sm2
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"math/big"
 	"strings"
 	"sync"
+
+	"github.com/hxx258456/ccgo/utils"
 )
 
 var zero = big.NewInt(0)
@@ -31,14 +34,16 @@ func toBytes(curve elliptic.Curve, value *big.Int) []byte {
 }
 
 // 将曲线上的点座标(x,y)转为未压缩字节数组
-//  参考: GB/T 32918.1-2016 4.2.9
+//
+//	参考: GB/T 32918.1-2016 4.2.9
 func point2UncompressedBytes(curve elliptic.Curve, x, y *big.Int) []byte {
 	return elliptic.Marshal(curve, x, y)
 }
 
 // 将曲线上的点座标(x,y)转为压缩字节数组
-//  返回的字节数组长度33, 第一位是C1压缩标识, 2代表y是偶数, 3代表y是奇数
-//  参考: GB/T 32918.1-2016 4.2.9
+//
+//	返回的字节数组长度33, 第一位是C1压缩标识, 2代表y是偶数, 3代表y是奇数
+//	参考: GB/T 32918.1-2016 4.2.9
 func point2CompressedBytes(curve elliptic.Curve, x, y *big.Int) []byte {
 	// buffer长度: (曲线位数(256) + 7) / 8 + 1 = 33
 	buffer := make([]byte, (curve.Params().BitSize+7)>>3+1)
@@ -58,7 +63,8 @@ func point2CompressedBytes(curve elliptic.Curve, x, y *big.Int) []byte {
 }
 
 // 将曲线上的点座标(x,y)转为混合字节数组
-//  参考: GB/T 32918.1-2016 4.2.9
+//
+//	参考: GB/T 32918.1-2016 4.2.9
 func point2MixedBytes(curve elliptic.Curve, x, y *big.Int) []byte {
 	// buffer是未做压缩的序列化字节数组, 长度65, 4 + x字节数组(32个) + y字节数组(32个)
 	buffer := elliptic.Marshal(curve, x, y)
@@ -75,8 +81,9 @@ func point2MixedBytes(curve elliptic.Curve, x, y *big.Int) []byte {
 }
 
 // 获取y最后一位的值
-//  x坐标为0时，直接返回0
-//  参考: GB/T 32918.1-2016 A.5.2
+//
+//	x坐标为0时，直接返回0
+//	参考: GB/T 32918.1-2016 A.5.2
 func getLastBitOfY(x, y *big.Int) uint {
 	// x坐标为0时，直接返回0
 	if x.Cmp(zero) == 0 {
@@ -91,7 +98,8 @@ func toPointXY(bytes []byte) *big.Int {
 }
 
 // 根据x坐标计算y坐标
-//  参考: GB/T 32918.1-2016 A.5.2 B.1.4
+//
+//	参考: GB/T 32918.1-2016 A.5.2 B.1.4
 func calculatePrimeCurveY(curve elliptic.Curve, x *big.Int) (*big.Int, error) {
 	// x3 : x^3
 	x3 := new(big.Int).Mul(x, x)
@@ -115,8 +123,9 @@ func calculatePrimeCurveY(curve elliptic.Curve, x *big.Int) (*big.Int, error) {
 }
 
 // 字节数组转为曲线上的点坐标
-//  返回x,y数值，以及字节数组长度(未压缩/混合:65, 压缩:33)
-//  参考: GB/T 32918.1-2016 4.2.10 A.5.2
+//
+//	返回x,y数值，以及字节数组长度(未压缩/混合:65, 压缩:33)
+//	参考: GB/T 32918.1-2016 4.2.10 A.5.2
 func bytes2Point(curve elliptic.Curve, bytes []byte) (*big.Int, *big.Int, int, error) {
 	if len(bytes) < 1+(curve.Params().BitSize/8) {
 		return nil, nil, 0, fmt.Errorf("invalid bytes length %d", len(bytes))
@@ -184,10 +193,14 @@ func maybeReadByte(r io.Reader) {
 		return
 	case <-closedChan:
 		var buf [1]byte
-		r.Read(buf[:])
+		_, err := r.Read(buf[:])
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
+//goland:noinspection GoUnusedExportedFunction
 func ConvertSM2Priv2ECPriv(sm2Priv *PrivateKey) (*ecdsa.PrivateKey, error) {
 	ecPriv := &ecdsa.PrivateKey{}
 	ecPriv.Curve = sm2Priv.Curve
@@ -197,6 +210,7 @@ func ConvertSM2Priv2ECPriv(sm2Priv *PrivateKey) (*ecdsa.PrivateKey, error) {
 	return ecPriv, nil
 }
 
+//goland:noinspection GoUnusedExportedFunction
 func ConvertECPriv2SM2Priv(ecPriv *ecdsa.PrivateKey) (*PrivateKey, error) {
 	sm2Priv := &PrivateKey{}
 	sm2Priv.Curve = ecPriv.Curve
@@ -208,3 +222,85 @@ func ConvertECPriv2SM2Priv(ecPriv *ecdsa.PrivateKey) (*PrivateKey, error) {
 	sm2Priv.Y = ecPriv.Y
 	return sm2Priv, nil
 }
+
+// ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+// SM2公私钥与hex相互转换
+
+// ReadSm2PrivFromHex 将hex字符串转为sm2私钥
+//
+//	@param Dhex 16进制字符串，对应sm2.PrivateKey.D
+//	@return *PrivateKey sm2私钥
+//	@return error
+func ReadSm2PrivFromHex(Dhex string) (*PrivateKey, error) {
+	c := P256Sm2()
+	d, err := hex.DecodeString(Dhex)
+	if err != nil {
+		return nil, err
+	}
+	k := new(big.Int).SetBytes(d)
+	params := c.Params()
+	one := new(big.Int).SetInt64(1)
+	n := new(big.Int).Sub(params.N, one)
+	if k.Cmp(n) >= 0 {
+		return nil, errors.New("privateKey's D is overflow")
+	}
+	priv := new(PrivateKey)
+	priv.PublicKey.Curve = c
+	priv.D = k
+	priv.PublicKey.X, priv.PublicKey.Y = c.ScalarBaseMult(k.Bytes())
+	return priv, nil
+}
+
+// WriteSm2PrivToHex 将sm2私钥D转为hex字符串
+//
+//	@param key sm2私钥
+//	@return string
+func WriteSm2PrivToHex(key *PrivateKey) string {
+	return key.D.Text(16)
+}
+
+// ReadSm2PubFromHex 将hex字符串转为sm2公钥
+//
+//	@param Qhex sm2公钥座标x,y的字节数组拼接后的hex转码字符串
+//	@return *PublicKey sm2公钥
+//	@return error
+func ReadSm2PubFromHex(Qhex string) (*PublicKey, error) {
+	q, err := hex.DecodeString(Qhex)
+	if err != nil {
+		return nil, err
+	}
+	if len(q) == 65 && q[0] == byte(0x04) {
+		q = q[1:]
+	}
+	if len(q) != 64 {
+		return nil, errors.New("publicKey is not uncompressed")
+	}
+	pub := new(PublicKey)
+	pub.Curve = P256Sm2()
+	pub.X = new(big.Int).SetBytes(q[:32])
+	pub.Y = new(big.Int).SetBytes(q[32:])
+	return pub, nil
+}
+
+// WriteSm2PubToHex 将sm2公钥转为hex字符串
+//
+//	@param key sm2公钥
+//	@return string
+func WriteSm2PubToHex(key *PublicKey) string {
+	x := key.X.Bytes()
+	y := key.Y.Bytes()
+	if n := len(x); n < 32 {
+		x = append(utils.ZeroByteSlice()[:32-n], x...)
+	}
+	if n := len(y); n < 32 {
+		y = append(utils.ZeroByteSlice()[:32-n], y...)
+	}
+	var c []byte
+	c = append(c, x...)
+	c = append(c, y...)
+	c = append([]byte{0x04}, c...)
+	return hex.EncodeToString(c)
+}
+
+// SM2公私钥与hex相互转换
+// ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
