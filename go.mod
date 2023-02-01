@@ -34,7 +34,7 @@ require (
 
 require (
 	cloud.google.com/go v0.65.0 // indirect
-	gitee.com/zhaochuninhefei/zcgolog v0.0.14
+	gitee.com/zhaochuninhefei/zcgolog v0.0.16
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

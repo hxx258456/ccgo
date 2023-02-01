@@ -154,7 +154,7 @@ func (c *Conn) readClientHello(ctx context.Context) (*clientHelloMsg, error) {
 	}
 	clientHello, ok := msg.(*clientHelloMsg)
 	if !ok {
-		c.sendAlert(alertUnexpectedMessage)
+		_ = c.sendAlert(alertUnexpectedMessage)
 		return nil, unexpectedMessageError(clientHello, msg)
 	}
 	zclog.Debug("===== 服务端读取到 ClientHello")
@@ -164,8 +164,8 @@ func (c *Conn) readClientHello(ctx context.Context) (*clientHelloMsg, error) {
 	if c.config.GetConfigForClient != nil {
 		chi := clientHelloInfo(ctx, c, clientHello)
 		if configForClient, err = c.config.GetConfigForClient(chi); err != nil {
-			c.sendAlert(alertInternalError)
-			return nil, err
+			_ = c.sendAlert(alertInternalError)
+			return nil, fmt.Errorf("gmtls: GetConfigForClient时发生错误: %s", err)
 		} else if configForClient != nil {
 			c.config = configForClient
 		}
@@ -180,7 +180,7 @@ func (c *Conn) readClientHello(ctx context.Context) (*clientHelloMsg, error) {
 	// 协商tls协议版本
 	c.vers, ok = c.config.mutualVersion(clientVersions)
 	if !ok {
-		c.sendAlert(alertProtocolVersion)
+		_ = c.sendAlert(alertProtocolVersion)
 		return nil, fmt.Errorf("gmtls: client offered only unsupported versions: %x", clientVersions)
 	}
 	zclog.Debug("===== 服务端选择本次tls连接使用的版本是:", ShowTLSVersion(int(c.vers)))
@@ -207,7 +207,7 @@ func (hs *serverHandshakeState) processClientHello() error {
 	}
 
 	if !foundCompression {
-		c.sendAlert(alertHandshakeFailure)
+		_ = c.sendAlert(alertHandshakeFailure)
 		return errors.New("gmtls: client does not support uncompressed connections")
 	}
 
@@ -225,12 +225,12 @@ func (hs *serverHandshakeState) processClientHello() error {
 	}
 	_, err := io.ReadFull(c.config.rand(), serverRandom)
 	if err != nil {
-		c.sendAlert(alertInternalError)
-		return err
+		_ = c.sendAlert(alertInternalError)
+		return fmt.Errorf("gmtls: 创建serverRandom失败: %s", err)
 	}
 
 	if len(hs.clientHello.secureRenegotiation) != 0 {
-		c.sendAlert(alertHandshakeFailure)
+		_ = c.sendAlert(alertHandshakeFailure)
 		return errors.New("gmtls: initial handshake had non-empty renegotiation extension")
 	}
 
@@ -242,7 +242,7 @@ func (hs *serverHandshakeState) processClientHello() error {
 
 	selectedProto, err := negotiateALPN(c.config.NextProtos, hs.clientHello.alpnProtocols)
 	if err != nil {
-		c.sendAlert(alertNoApplicationProtocol)
+		_ = c.sendAlert(alertNoApplicationProtocol)
 		return err
 	}
 	hs.hello.alpnProtocol = selectedProto
@@ -250,11 +250,13 @@ func (hs *serverHandshakeState) processClientHello() error {
 
 	hs.cert, err = c.config.getCertificate(clientHelloInfo(hs.ctx, c, hs.clientHello))
 	if err != nil {
+		var alt alert
 		if err == errNoCertificates {
-			c.sendAlert(alertUnrecognizedName)
+			alt = alertUnrecognizedName
 		} else {
-			c.sendAlert(alertInternalError)
+			alt = alertInternalError
 		}
+		_ = c.sendAlert(alt)
 		return err
 	}
 	if hs.clientHello.scts {
@@ -281,7 +283,7 @@ func (hs *serverHandshakeState) processClientHello() error {
 		case *rsa.PublicKey:
 			hs.rsaSignOk = true
 		default:
-			c.sendAlert(alertInternalError)
+			_ = c.sendAlert(alertInternalError)
 			return fmt.Errorf("gmtls: unsupported signing key type (%T)", priv.Public())
 		}
 	}
@@ -290,7 +292,7 @@ func (hs *serverHandshakeState) processClientHello() error {
 		case *rsa.PublicKey:
 			hs.rsaDecryptOk = true
 		default:
-			c.sendAlert(alertInternalError)
+			_ = c.sendAlert(alertInternalError)
 			return fmt.Errorf("gmtls: unsupported decryption key type (%T)", priv.Public())
 		}
 	}
@@ -369,7 +371,7 @@ func (hs *serverHandshakeState) pickCipherSuite() error {
 
 	hs.suite = selectCipherSuite(preferenceList, hs.clientHello.cipherSuites, hs.cipherSuiteOk)
 	if hs.suite == nil {
-		c.sendAlert(alertHandshakeFailure)
+		_ = c.sendAlert(alertHandshakeFailure)
 		return errors.New("gmtls: no cipher suite supported by both client and server")
 	}
 	c.cipherSuite = hs.suite.id
@@ -378,7 +380,7 @@ func (hs *serverHandshakeState) pickCipherSuite() error {
 		if id == TLS_FALLBACK_SCSV {
 			// The client is doing a fallback connection. See RFC 7507.
 			if hs.clientHello.vers < c.config.maxSupportedVersion() {
-				c.sendAlert(alertInappropriateFallback)
+				_ = c.sendAlert(alertInappropriateFallback)
 				return errors.New("gmtls: client using inappropriate protocol fallback")
 			}
 			break
@@ -479,8 +481,8 @@ func (hs *serverHandshakeState) doResumeHandshake() error {
 	hs.hello.ticketSupported = hs.sessionState.usedOldKey
 	hs.finishedHash = newFinishedHash(c.vers, hs.suite)
 	hs.finishedHash.discardHandshakeBuffer()
-	hs.finishedHash.Write(hs.clientHello.marshal())
-	hs.finishedHash.Write(hs.hello.marshal())
+	_, _ = hs.finishedHash.Write(hs.clientHello.marshal())
+	_, _ = hs.finishedHash.Write(hs.hello.marshal())
 	if _, err := c.writeRecord(recordTypeHandshake, hs.hello.marshal()); err != nil {
 		return err
 	}
@@ -493,8 +495,8 @@ func (hs *serverHandshakeState) doResumeHandshake() error {
 
 	if c.config.VerifyConnection != nil {
 		if err := c.config.VerifyConnection(c.connectionStateLocked()); err != nil {
-			c.sendAlert(alertBadCertificate)
-			return err
+			_ = c.sendAlert(alertBadCertificate)
+			return fmt.Errorf("gmtls: VerifyConnection时发生错误: %s", err)
 		}
 	}
 
@@ -520,15 +522,15 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 		// certificates won't be used.
 		hs.finishedHash.discardHandshakeBuffer()
 	}
-	hs.finishedHash.Write(hs.clientHello.marshal())
-	hs.finishedHash.Write(hs.hello.marshal())
+	_, _ = hs.finishedHash.Write(hs.clientHello.marshal())
+	_, _ = hs.finishedHash.Write(hs.hello.marshal())
 	if _, err := c.writeRecord(recordTypeHandshake, hs.hello.marshal()); err != nil {
 		return err
 	}
 
 	certMsg := new(certificateMsg)
 	certMsg.certificates = hs.cert.Certificate
-	hs.finishedHash.Write(certMsg.marshal())
+	_, _ = hs.finishedHash.Write(certMsg.marshal())
 	if _, err := c.writeRecord(recordTypeHandshake, certMsg.marshal()); err != nil {
 		return err
 	}
@@ -536,7 +538,7 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 	if hs.hello.ocspStapling {
 		certStatus := new(certificateStatusMsg)
 		certStatus.response = hs.cert.OCSPStaple
-		hs.finishedHash.Write(certStatus.marshal())
+		_, _ = hs.finishedHash.Write(certStatus.marshal())
 		if _, err := c.writeRecord(recordTypeHandshake, certStatus.marshal()); err != nil {
 			return err
 		}
@@ -545,11 +547,11 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 	keyAgreement := hs.suite.ka(c.vers)
 	skx, err := keyAgreement.generateServerKeyExchange(c.config, hs.cert, hs.clientHello, hs.hello)
 	if err != nil {
-		c.sendAlert(alertHandshakeFailure)
-		return err
+		_ = c.sendAlert(alertHandshakeFailure)
+		return fmt.Errorf("gmtls: generateServerKeyExchange时发生错误: %s", err)
 	}
 	if skx != nil {
-		hs.finishedHash.Write(skx.marshal())
+		_, _ = hs.finishedHash.Write(skx.marshal())
 		if _, err := c.writeRecord(recordTypeHandshake, skx.marshal()); err != nil {
 			return err
 		}
@@ -576,14 +578,14 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 		if c.config.ClientCAs != nil {
 			certReq.certificateAuthorities = c.config.ClientCAs.Subjects()
 		}
-		hs.finishedHash.Write(certReq.marshal())
+		_, _ = hs.finishedHash.Write(certReq.marshal())
 		if _, err := c.writeRecord(recordTypeHandshake, certReq.marshal()); err != nil {
 			return err
 		}
 	}
 
 	helloDone := new(serverHelloDoneMsg)
-	hs.finishedHash.Write(helloDone.marshal())
+	_, _ = hs.finishedHash.Write(helloDone.marshal())
 	if _, err := c.writeRecord(recordTypeHandshake, helloDone.marshal()); err != nil {
 		return err
 	}
@@ -604,9 +606,10 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 	if c.config.ClientAuth >= RequestClientCert {
 		certMsg, ok := msg.(*certificateMsg)
 		if !ok {
-			c.sendAlert(alertUnexpectedMessage)
+			_ = c.sendAlert(alertUnexpectedMessage)
 			return unexpectedMessageError(certMsg, msg)
 		}
+		_, _ = hs.finishedHash.Write(certMsg.marshal())
 		hs.finishedHash.Write(certMsg.marshal())
 
 		if err := c.processCertsFromClient(Certificate{
@@ -625,7 +628,7 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 	}
 	if c.config.VerifyConnection != nil {
 		if err := c.config.VerifyConnection(c.connectionStateLocked()); err != nil {
-			c.sendAlert(alertBadCertificate)
+			_ = c.sendAlert(alertBadCertificate)
 			return err
 		}
 	}
@@ -633,21 +636,21 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 	// Get client key exchange
 	ckx, ok := msg.(*clientKeyExchangeMsg)
 	if !ok {
-		c.sendAlert(alertUnexpectedMessage)
+		_ = c.sendAlert(alertUnexpectedMessage)
 		return unexpectedMessageError(ckx, msg)
 	}
-	hs.finishedHash.Write(ckx.marshal())
+	_, _ = hs.finishedHash.Write(ckx.marshal())
 
 	// 获取预主密钥, 分为RSA与ECDHE
 	preMasterSecret, err := keyAgreement.processClientKeyExchange(c.config, hs.cert, ckx, c.vers)
 	if err != nil {
-		c.sendAlert(alertHandshakeFailure)
+		_ = c.sendAlert(alertHandshakeFailure)
 		return err
 	}
 	// 根据预主密钥，随机数C、S，使用PRF函数计算主密钥
 	hs.masterSecret = masterFromPreMasterSecret(c.vers, hs.suite, preMasterSecret, hs.clientHello.random, hs.hello.random)
 	if err := c.config.writeKeyLog(keyLogLabelTLS12, hs.clientHello.random, hs.masterSecret); err != nil {
-		c.sendAlert(alertInternalError)
+		_ = c.sendAlert(alertInternalError)
 		return err
 	}
 
@@ -664,7 +667,7 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 		}
 		certVerify, ok := msg.(*certificateVerifyMsg)
 		if !ok {
-			c.sendAlert(alertUnexpectedMessage)
+			_ = c.sendAlert(alertUnexpectedMessage)
 			return unexpectedMessageError(certVerify, msg)
 		}
 
@@ -672,7 +675,7 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 		var sigHash x509.Hash
 		if c.vers >= VersionTLS12 {
 			if !isSupportedSignatureAlgorithm(certVerify.signatureAlgorithm, certReq.supportedSignatureAlgorithms) {
-				c.sendAlert(alertIllegalParameter)
+				_ = c.sendAlert(alertIllegalParameter)
 				return errors.New("gmtls: client certificate used with invalid signature algorithm")
 			}
 			sigType, sigHash, err = typeAndHashFromSignatureScheme(certVerify.signatureAlgorithm)
@@ -682,18 +685,18 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 		} else {
 			sigType, sigHash, err = legacyTypeAndHashFromPublicKey(pub)
 			if err != nil {
-				c.sendAlert(alertIllegalParameter)
+				_ = c.sendAlert(alertIllegalParameter)
 				return err
 			}
 		}
 
 		signed := hs.finishedHash.hashForClientCertificate(sigType, sigHash, hs.masterSecret)
 		if err := verifyHandshakeSignature(sigType, pub, sigHash, signed, certVerify.signature); err != nil {
-			c.sendAlert(alertDecryptError)
-			return errors.New("gmtls: invalid signature by the client certificate: " + err.Error())
+			_ = c.sendAlert(alertDecryptError)
+			return fmt.Errorf("gmtls: invalid signature by the client certificate: %s", err)
 		}
 
-		hs.finishedHash.Write(certVerify.marshal())
+		_, _ = hs.finishedHash.Write(certVerify.marshal())
 	}
 
 	hs.finishedHash.discardHandshakeBuffer()
@@ -741,18 +744,18 @@ func (hs *serverHandshakeState) readFinished(out []byte) error {
 	}
 	clientFinished, ok := msg.(*finishedMsg)
 	if !ok {
-		c.sendAlert(alertUnexpectedMessage)
+		_ = c.sendAlert(alertUnexpectedMessage)
 		return unexpectedMessageError(clientFinished, msg)
 	}
 
 	verify := hs.finishedHash.clientSum(hs.masterSecret)
 	if len(verify) != len(clientFinished.verifyData) ||
 		subtle.ConstantTimeCompare(verify, clientFinished.verifyData) != 1 {
-		c.sendAlert(alertHandshakeFailure)
+		_ = c.sendAlert(alertHandshakeFailure)
 		return errors.New("gmtls: client's Finished message is incorrect")
 	}
 
-	hs.finishedHash.Write(clientFinished.marshal())
+	_, _ = hs.finishedHash.Write(clientFinished.marshal())
 	copy(out, verify)
 	return nil
 }
@@ -792,7 +795,7 @@ func (hs *serverHandshakeState) sendSessionTicket() error {
 		return err
 	}
 
-	hs.finishedHash.Write(m.marshal())
+	_, _ = hs.finishedHash.Write(m.marshal())
 	if _, err := c.writeRecord(recordTypeHandshake, m.marshal()); err != nil {
 		return err
 	}
@@ -809,7 +812,7 @@ func (hs *serverHandshakeState) sendFinished(out []byte) error {
 
 	finished := new(finishedMsg)
 	finished.verifyData = hs.finishedHash.serverSum(hs.masterSecret)
-	hs.finishedHash.Write(finished.marshal())
+	_, _ = hs.finishedHash.Write(finished.marshal())
 	if _, err := c.writeRecord(recordTypeHandshake, finished.marshal()); err != nil {
 		return err
 	}
@@ -829,13 +832,13 @@ func (c *Conn) processCertsFromClient(certificate Certificate) error {
 	var err error
 	for i, asn1Data := range certificates {
 		if certs[i], err = x509.ParseCertificate(asn1Data); err != nil {
-			c.sendAlert(alertBadCertificate)
-			return errors.New("gmtls: failed to parse client certificate: " + err.Error())
+			_ = c.sendAlert(alertBadCertificate)
+			return fmt.Errorf("gmtls: failed to parse client certificate: %s", err)
 		}
 	}
 
 	if len(certs) == 0 && requiresClientCert(c.config.ClientAuth) {
-		c.sendAlert(alertBadCertificate)
+		_ = c.sendAlert(alertBadCertificate)
 		return errors.New("gmtls: client didn't provide a certificate")
 	}
 
@@ -853,8 +856,8 @@ func (c *Conn) processCertsFromClient(certificate Certificate) error {
 		// 从子证书开始验证签名并尝试构建信任链
 		chains, err := certs[0].Verify(opts)
 		if err != nil {
-			c.sendAlert(alertBadCertificate)
-			return errors.New("gmtls: failed to verify client certificate: " + err.Error())
+			_ = c.sendAlert(alertBadCertificate)
+			return fmt.Errorf("gmtls: failed to verify client certificate: %s", err)
 		}
 
 		c.verifiedChains = chains
@@ -869,15 +872,15 @@ func (c *Conn) processCertsFromClient(certificate Certificate) error {
 		switch certs[0].PublicKey.(type) {
 		case *sm2.PublicKey, *ecdsa.PublicKey, *rsa.PublicKey, ed25519.PublicKey:
 		default:
-			c.sendAlert(alertUnsupportedCertificate)
+			_ = c.sendAlert(alertUnsupportedCertificate)
 			return fmt.Errorf("gmtls: client certificate contains an unsupported public key of type %T", certs[0].PublicKey)
 		}
 	}
 
 	if c.config.VerifyPeerCertificate != nil {
 		if err := c.config.VerifyPeerCertificate(certificates, c.verifiedChains); err != nil {
-			c.sendAlert(alertBadCertificate)
-			return err
+			_ = c.sendAlert(alertBadCertificate)
+			return fmt.Errorf("gmtls: VerifyPeerCertificate时发生错误: %s", err)
 		}
 	}
 
