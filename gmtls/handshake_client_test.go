@@ -61,11 +61,11 @@ func (i opensslInput) Read(buf []byte) (n int, err error) {
 	for event := range i {
 		switch event {
 		case opensslRenegotiate:
-			return copy(buf, []byte("R\n")), nil
+			return copy(buf, "R\n"), nil
 		case opensslKeyUpdate:
-			return copy(buf, []byte("K\n")), nil
+			return copy(buf, "K\n"), nil
 		case opensslSendSentinel:
-			return copy(buf, []byte(opensslSentinel)), nil
+			return copy(buf, opensslSentinel), nil
 		default:
 			panic("unknown event")
 		}
@@ -173,7 +173,12 @@ func (test *clientTest) connFromCommand() (conn *recordingConn, child *exec.Cmd,
 		cert = test.cert
 	}
 	certPath := tempFile(string(cert))
-	defer os.Remove(certPath)
+	defer func(name string) {
+		err := os.Remove(name)
+		if err != nil {
+			panic(err)
+		}
+	}(certPath)
 
 	var key interface{} = testRSAPrivateKey
 	if test.key != nil {
@@ -185,10 +190,18 @@ func (test *clientTest) connFromCommand() (conn *recordingConn, child *exec.Cmd,
 	}
 
 	var pemOut bytes.Buffer
-	pem.Encode(&pemOut, &pem.Block{Type: "PRIVATE KEY", Bytes: derBytes})
+	err = pem.Encode(&pemOut, &pem.Block{Type: "PRIVATE KEY", Bytes: derBytes})
+	if err != nil {
+		panic(err)
+	}
 
 	keyPath := tempFile(pemOut.String())
-	defer os.Remove(keyPath)
+	defer func(name string) {
+		err := os.Remove(name)
+		if err != nil {
+			panic(err)
+		}
+	}(keyPath)
 
 	var command []string
 	command = append(command, serverCommand...)
@@ -205,13 +218,21 @@ func (test *clientTest) connFromCommand() (conn *recordingConn, child *exec.Cmd,
 	if len(test.extensions) > 0 {
 		var serverInfo bytes.Buffer
 		for _, ext := range test.extensions {
-			pem.Encode(&serverInfo, &pem.Block{
+			err := pem.Encode(&serverInfo, &pem.Block{
 				Type:  fmt.Sprintf("SERVERINFO FOR EXTENSION %d", binary.BigEndian.Uint16(ext)),
 				Bytes: ext,
 			})
+			if err != nil {
+				panic(err)
+			}
 		}
 		serverInfoPath := tempFile(serverInfo.String())
-		defer os.Remove(serverInfoPath)
+		defer func(name string) {
+			err := os.Remove(name)
+			if err != nil {
+				panic(err)
+			}
+		}(serverInfoPath)
 		command = append(command, "-serverinfo", serverInfoPath)
 	}
 
@@ -230,7 +251,7 @@ func (test *clientTest) connFromCommand() (conn *recordingConn, child *exec.Cmd,
 	}
 
 	cmd := exec.Command(command[0], command[1:]...)
-	stdin = opensslInput(make(chan opensslInputEvent))
+	stdin = make(chan opensslInputEvent)
 	cmd.Stdin = stdin
 	out := newOpensslOutputSink()
 	cmd.Stdout = out
@@ -256,7 +277,10 @@ func (test *clientTest) connFromCommand() (conn *recordingConn, child *exec.Cmd,
 	}
 	if err != nil {
 		close(stdin)
-		cmd.Process.Kill()
+		err1 := cmd.Process.Kill()
+		if err1 != nil {
+			panic(err1)
+		}
 		err = fmt.Errorf("error connecting to the OpenSSL server: %v (%v)\n\n%s", err, cmd.Wait(), out)
 		return nil, nil, nil, nil, err
 	}
@@ -277,7 +301,12 @@ func (test *clientTest) loadData() (flows [][]byte, err error) {
 	if err != nil {
 		return nil, err
 	}
-	defer in.Close()
+	defer func(in *os.File) {
+		err := in.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(in)
 	return parseTestData(in)
 }
 
@@ -306,7 +335,10 @@ func (test *clientTest) run(t *testing.T, write bool) {
 
 	doneChan := make(chan bool)
 	defer func() {
-		clientConn.Close()
+		err := clientConn.Close()
+		if err != nil {
+			panic(err)
+		}
 		<-doneChan
 	}()
 	go func() {
@@ -317,7 +349,12 @@ func (test *clientTest) run(t *testing.T, write bool) {
 			config = testConfig
 		}
 		client := Client(clientConn, config)
-		defer client.Close()
+		defer func(client *Conn) {
+			err := client.Close()
+			if err != nil {
+				panic(err)
+			}
+		}(client)
 
 		if _, err := client.Write([]byte("hello\n")); err != nil {
 			t.Errorf("Client.Write failed: %s", err)
@@ -444,18 +481,33 @@ func (test *clientTest) run(t *testing.T, write bool) {
 		for i, b := range flows {
 			if i%2 == 1 {
 				if *fast {
-					serverConn.SetWriteDeadline(time.Now().Add(1 * time.Second))
+					err := serverConn.SetWriteDeadline(time.Now().Add(1 * time.Second))
+					if err != nil {
+						panic(err)
+					}
 				} else {
-					serverConn.SetWriteDeadline(time.Now().Add(1 * time.Minute))
+					err := serverConn.SetWriteDeadline(time.Now().Add(1 * time.Minute))
+					if err != nil {
+						panic(err)
+					}
 				}
-				serverConn.Write(b)
+				_, err := serverConn.Write(b)
+				if err != nil {
+					panic(err)
+				}
 				continue
 			}
 			bb := make([]byte, len(b))
 			if *fast {
-				serverConn.SetReadDeadline(time.Now().Add(1 * time.Second))
+				err := serverConn.SetReadDeadline(time.Now().Add(1 * time.Second))
+				if err != nil {
+					panic(err)
+				}
 			} else {
-				serverConn.SetReadDeadline(time.Now().Add(1 * time.Minute))
+				err := serverConn.SetReadDeadline(time.Now().Add(1 * time.Minute))
+				if err != nil {
+					panic(err)
+				}
 			}
 			_, err := io.ReadFull(serverConn, bb)
 			if err != nil {
@@ -469,7 +521,10 @@ func (test *clientTest) run(t *testing.T, write bool) {
 
 	<-doneChan
 	if !write {
-		serverConn.Close()
+		err := serverConn.Close()
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	if write {
@@ -478,15 +533,32 @@ func (test *clientTest) run(t *testing.T, write bool) {
 		if err != nil {
 			t.Fatalf("Failed to create output file: %s", err)
 		}
-		defer out.Close()
-		recordingConn.Close()
+		defer func(out *os.File) {
+			err := out.Close()
+			if err != nil {
+				panic(err)
+			}
+		}(out)
+		err = recordingConn.Close()
+		if err != nil {
+			panic(err)
+		}
 		close(stdin)
-		childProcess.Process.Kill()
-		childProcess.Wait()
+		err = childProcess.Process.Kill()
+		if err != nil {
+			panic(err)
+		}
+		err = childProcess.Wait()
+		if err != nil {
+			panic(err)
+		}
 		if len(recordingConn.flows) < 3 {
 			t.Fatalf("Client connection didn't work")
 		}
-		recordingConn.WriteTo(out)
+		_, err = recordingConn.WriteTo(out)
+		if err != nil {
+			panic(err)
+		}
 		t.Logf("Wrote %s\n", path)
 	}
 }
@@ -494,7 +566,10 @@ func (test *clientTest) run(t *testing.T, write bool) {
 // peekError does a read with a short timeout to check if the next read would
 // cause an error, for example if there is an alert waiting on the wire.
 func peekError(conn net.Conn) error {
-	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	err := conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	if err != nil {
+		return err
+	}
 	if n, err := conn.Read(make([]byte, 1)); n != 0 {
 		return errors.New("unexpectedly read data")
 	} else if err != nil {
@@ -1133,14 +1208,20 @@ func TestKeyLogTLS12(t *testing.T) {
 			t.Errorf("server: %s", err)
 			return
 		}
-		s.Close()
+		err := s.Close()
+		if err != nil {
+			panic(err)
+		}
 	}()
 
 	if err := Client(c, clientConfig).Handshake(); err != nil {
 		t.Fatalf("client: %s", err)
 	}
 
-	c.Close()
+	err := c.Close()
+	if err != nil {
+		panic(err)
+	}
 	<-done
 
 	checkKeylogLine := func(side, loggedLine string) {
@@ -1184,14 +1265,20 @@ func TestKeyLogTLS13(t *testing.T) {
 			t.Errorf("server: %s", err)
 			return
 		}
-		s.Close()
+		err := s.Close()
+		if err != nil {
+			panic(err)
+		}
 	}()
 
 	if err := Client(c, clientConfig).Handshake(); err != nil {
 		t.Fatalf("client: %s", err)
 	}
 
-	c.Close()
+	err := c.Close()
+	if err != nil {
+		panic(err)
+	}
 	<-done
 
 	checkKeylogLines := func(side, loggedLines string) {
@@ -1219,6 +1306,7 @@ func TestHandshakeClientALPNMatch(t *testing.T) {
 		validate: func(state ConnectionState) error {
 			// The server's preferences should override the client.
 			if state.NegotiatedProtocol != "proto1" {
+				//goland:noinspection GoErrorStringFormat
 				return fmt.Errorf("Got protocol %q, wanted proto1", state.NegotiatedProtocol)
 			}
 			return nil
@@ -1263,15 +1351,24 @@ func TestServerSelectingUnconfiguredApplicationProtocol(t *testing.T) {
 	}
 	serverHelloBytes := serverHello.marshal()
 
-	s.Write([]byte{
+	_, err := s.Write([]byte{
 		byte(recordTypeHandshake),
 		byte(VersionTLS12 >> 8),
 		byte(VersionTLS12 & 0xff),
 		byte(len(serverHelloBytes) >> 8),
 		byte(len(serverHelloBytes)),
 	})
-	s.Write(serverHelloBytes)
-	s.Close()
+	if err != nil {
+		panic(err)
+	}
+	_, err = s.Write(serverHelloBytes)
+	if err != nil {
+		panic(err)
+	}
+	err = s.Close()
+	if err != nil {
+		panic(err)
+	}
 
 	if err := <-errChan; !strings.Contains(err.Error(), "server selected unadvertised ALPN protocol") {
 		t.Fatalf("Expected error about unconfigured cipher suite but got %q", err)
@@ -1302,6 +1399,7 @@ func TestHandshakClientSCTs(t *testing.T) {
 				scts[247:],
 			}
 			if n := len(state.SignedCertificateTimestamps); n != len(expectedSCTs) {
+				//goland:noinspection GoErrorStringFormat
 				return fmt.Errorf("Got %d scts, wanted %d", n, len(expectedSCTs))
 			}
 			for i, expected := range expectedSCTs {
@@ -1403,6 +1501,7 @@ func TestHandshakeClientExportKeyingMaterial(t *testing.T) {
 			if km, err := state.ExportKeyingMaterial("test", nil, 42); err != nil {
 				return fmt.Errorf("ExportKeyingMaterial failed: %v", err)
 			} else if len(km) != 42 {
+				//goland:noinspection GoErrorStringFormat
 				return fmt.Errorf("Got %d bytes from ExportKeyingMaterial, wanted %d", len(km), 42)
 			}
 			return nil
@@ -1440,7 +1539,10 @@ func TestHostnameInSNI(t *testing.T) {
 		c, s := localPipe(t)
 
 		go func(host string) {
-			Client(c, &Config{ServerName: host, InsecureSkipVerify: true}).Handshake()
+			err := Client(c, &Config{ServerName: host, InsecureSkipVerify: true}).Handshake()
+			if err != nil {
+				panic(err)
+			}
 		}(tt.in)
 
 		var header [5]byte
@@ -1454,8 +1556,14 @@ func TestHostnameInSNI(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		c.Close()
-		s.Close()
+		err := c.Close()
+		if err != nil {
+			panic(err)
+		}
+		err = s.Close()
+		if err != nil {
+			panic(err)
+		}
 
 		var m clientHelloMsg
 		if !m.unmarshal(record) {
@@ -1506,15 +1614,24 @@ func TestServerSelectingUnconfiguredCipherSuite(t *testing.T) {
 	}
 	serverHelloBytes := serverHello.marshal()
 
-	s.Write([]byte{
+	_, err := s.Write([]byte{
 		byte(recordTypeHandshake),
 		byte(VersionTLS12 >> 8),
 		byte(VersionTLS12 & 0xff),
 		byte(len(serverHelloBytes) >> 8),
 		byte(len(serverHelloBytes)),
 	})
-	s.Write(serverHelloBytes)
-	s.Close()
+	if err != nil {
+		panic(err)
+	}
+	_, err = s.Write(serverHelloBytes)
+	if err != nil {
+		panic(err)
+	}
+	err = s.Close()
+	if err != nil {
+		panic(err)
+	}
 
 	if err := <-errChan; !strings.Contains(err.Error(), "unconfigured cipher") {
 		t.Fatalf("Expected error about unconfigured cipher suite but got %q", err)
@@ -2014,7 +2131,10 @@ func testVerifyPeerCertificate(t *testing.T, version uint16) {
 			test.configureServer(config, &serverCalled)
 
 			err = Server(s, config).Handshake()
-			s.Close()
+			err := c.Close()
+			if err != nil {
+				panic(err)
+			}
 			done <- err
 		}()
 
@@ -2025,7 +2145,10 @@ func testVerifyPeerCertificate(t *testing.T, version uint16) {
 		config.MaxVersion = version
 		test.configureClient(config, &clientCalled)
 		clientErr := Client(c, config).Handshake()
-		c.Close()
+		err := s.Close()
+		if err != nil {
+			panic(err)
+		}
 		serverErr := <-done
 
 		test.validate(t, i, clientCalled, serverCalled, clientErr, serverErr)
@@ -2064,8 +2187,14 @@ func TestFailedWrite(t *testing.T) {
 		done := make(chan bool)
 
 		go func() {
-			Server(s, testConfig).Handshake()
-			s.Close()
+			err := Server(s, testConfig).Handshake()
+			if err != nil {
+				panic(err)
+			}
+			err = s.Close()
+			if err != nil {
+				panic(err)
+			}
 			done <- true
 		}()
 
@@ -2074,7 +2203,10 @@ func TestFailedWrite(t *testing.T) {
 		if err != errbrokenConn {
 			t.Errorf("#%d: expected error from brokenConn but got %q", breakAfter, err)
 		}
-		brokenC.Close()
+		err = brokenC.Close()
+		if err != nil {
+			panic(err)
+		}
 
 		<-done
 	}
@@ -2108,8 +2240,14 @@ func testBuffering(t *testing.T, version uint16) {
 	go func() {
 		config := testConfig.Clone()
 		config.MaxVersion = version
-		Server(serverWCC, config).Handshake()
-		serverWCC.Close()
+		err := Server(serverWCC, config).Handshake()
+		if err != nil {
+			panic(err)
+		}
+		err = serverWCC.Close()
+		if err != nil {
+			panic(err)
+		}
 		done <- true
 	}()
 
@@ -2117,7 +2255,10 @@ func testBuffering(t *testing.T, version uint16) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	clientWCC.Close()
+	err = clientWCC.Close()
+	if err != nil {
+		panic(err)
+	}
 	<-done
 
 	var expectedClient, expectedServer int
@@ -2156,8 +2297,14 @@ func TestAlertFlushing(t *testing.T) {
 	}}
 
 	go func() {
-		Server(serverWCC, serverConfig).Handshake()
-		serverWCC.Close()
+		err := Server(serverWCC, serverConfig).Handshake()
+		if err != nil {
+			panic(err)
+		}
+		err = serverWCC.Close()
+		if err != nil {
+			panic(err)
+		}
 		done <- true
 	}()
 
@@ -2170,7 +2317,10 @@ func TestAlertFlushing(t *testing.T) {
 	if e := err.Error(); !strings.Contains(e, expectedError) {
 		t.Fatalf("expected to find %q in error but error was %q", expectedError, e)
 	}
-	clientWCC.Close()
+	err = clientWCC.Close()
+	if err != nil {
+		panic(err)
+	}
 	<-done
 
 	if n := serverWCC.numWrites; n != 1 {
@@ -2200,8 +2350,14 @@ func TestHandshakeRace(t *testing.T) {
 				panic(err)
 			}
 
-			server.Write(request[:])
-			server.Close()
+			_, err := server.Write(request[:])
+			if err != nil {
+				panic(err)
+			}
+			err = server.Close()
+			if err != nil {
+				panic(err)
+			}
 		}()
 
 		startWrite := make(chan struct{})
@@ -2212,7 +2368,10 @@ func TestHandshakeRace(t *testing.T) {
 		go func() {
 			<-startWrite
 			var request [1]byte
-			client.Write(request[:])
+			_, err := client.Write(request[:])
+			if err != nil {
+				panic(err)
+			}
 		}()
 
 		go func() {
@@ -2221,7 +2380,10 @@ func TestHandshakeRace(t *testing.T) {
 			if _, err := io.ReadFull(client, reply[:]); err != nil {
 				panic(err)
 			}
-			c.Close()
+			err := c.Close()
+			if err != nil {
+				panic(err)
+			}
 			readDone <- struct{}{}
 		}()
 
@@ -2351,7 +2513,12 @@ func testGetClientCertificate(t *testing.T, version uint16) {
 		done := make(chan serverResult)
 
 		go func() {
-			defer s.Close()
+			defer func(s net.Conn) {
+				err := s.Close()
+				if err != nil {
+					panic(err)
+				}
+			}(s)
 			server := Server(s, serverConfig)
 			err := server.Handshake()
 
@@ -2363,7 +2530,10 @@ func testGetClientCertificate(t *testing.T, version uint16) {
 		}()
 
 		clientErr := Client(c, clientConfig).Handshake()
-		c.Close()
+		err := c.Close()
+		if err != nil {
+			panic(err)
+		}
 
 		result := <-done
 
@@ -2429,11 +2599,20 @@ func TestCloseClientConnectionOnIdleServer(t *testing.T) {
 	client := Client(clientConn, testConfig.Clone())
 	go func() {
 		var b [1]byte
-		serverConn.Read(b[:])
-		client.Close()
+		_, err := serverConn.Read(b[:])
+		if err != nil {
+			panic(err)
+		}
+		err = client.Close()
+		if err != nil {
+			panic(err)
+		}
 	}()
-	client.SetWriteDeadline(time.Now().Add(time.Minute))
-	err := client.Handshake()
+	err := client.SetWriteDeadline(time.Now().Add(time.Minute))
+	if err != nil {
+		panic(err)
+	}
+	err = client.Handshake()
 	if err != nil {
 		if err, ok := err.(net.Error); ok && err.Timeout() {
 			t.Errorf("Expected a closed network connection error but got '%s'", err.Error())

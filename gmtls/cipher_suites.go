@@ -25,7 +25,7 @@ import (
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
-// 密码学套件结构体
+// CipherSuite 密码学套件结构体
 // CipherSuite is a TLS cipher suite. Note that most functions in this package
 // accept and expose cipher suite IDs instead of this type.
 type CipherSuite struct {
@@ -252,57 +252,56 @@ var cipherSuitesTLS13 = []*cipherSuiteTLS13{ // replace with a map.
 //
 //   - Anything else comes before RC4
 //
-//       RC4 has practically exploitable biases. See https://www.rc4nomore.com.
+//     RC4 has practically exploitable biases. See https://www.rc4nomore.com.
 //
 //   - Anything else comes before CBC_SHA256
 //
-//       SHA-256 variants of the CBC ciphersuites don't implement any Lucky13
-//       countermeasures. See http://www.isg.rhul.ac.uk/tls/Lucky13.html and
-//       https://www.imperialviolet.org/2013/02/04/luckythirteen.html.
+//     SHA-256 variants of the CBC ciphersuites don't implement any Lucky13
+//     countermeasures. See http://www.isg.rhul.ac.uk/tls/Lucky13.html and
+//     https://www.imperialviolet.org/2013/02/04/luckythirteen.html.
 //
 //   - Anything else comes before 3DES
 //
-//       3DES has 64-bit blocks, which makes it fundamentally susceptible to
-//       birthday attacks. See https://sweet32.info.
+//     3DES has 64-bit blocks, which makes it fundamentally susceptible to
+//     birthday attacks. See https://sweet32.info.
 //
 //   - ECDHE comes before anything else
 //
-//       Once we got the broken stuff out of the way, the most important
-//       property a cipher suite can have is forward secrecy. We don't
-//       implement FFDHE, so that means ECDHE.
+//     Once we got the broken stuff out of the way, the most important
+//     property a cipher suite can have is forward secrecy. We don't
+//     implement FFDHE, so that means ECDHE.
 //
 //   - AEADs come before CBC ciphers
 //
-//       Even with Lucky13 countermeasures, MAC-then-Encrypt CBC cipher suites
-//       are fundamentally fragile, and suffered from an endless sequence of
-//       padding oracle attacks. See https://eprint.iacr.org/2015/1129,
-//       https://www.imperialviolet.org/2014/12/08/poodleagain.html, and
-//       https://blog.cloudflare.com/yet-another-padding-oracle-in-openssl-cbc-ciphersuites/.
+//     Even with Lucky13 countermeasures, MAC-then-Encrypt CBC cipher suites
+//     are fundamentally fragile, and suffered from an endless sequence of
+//     padding oracle attacks. See https://eprint.iacr.org/2015/1129,
+//     https://www.imperialviolet.org/2014/12/08/poodleagain.html, and
+//     https://blog.cloudflare.com/yet-another-padding-oracle-in-openssl-cbc-ciphersuites/.
 //
 //   - AES comes before ChaCha20
 //
-//       When AES hardware is available, AES-128-GCM and AES-256-GCM are faster
-//       than ChaCha20Poly1305.
+//     When AES hardware is available, AES-128-GCM and AES-256-GCM are faster
+//     than ChaCha20Poly1305.
 //
-//       When AES hardware is not available, AES-128-GCM is one or more of: much
-//       slower, way more complex, and less safe (because not constant time)
-//       than ChaCha20Poly1305.
+//     When AES hardware is not available, AES-128-GCM is one or more of: much
+//     slower, way more complex, and less safe (because not constant time)
+//     than ChaCha20Poly1305.
 //
-//       We use this list if we think both peers have AES hardware, and
-//       cipherSuitesPreferenceOrderNoAES otherwise.
+//     We use this list if we think both peers have AES hardware, and
+//     cipherSuitesPreferenceOrderNoAES otherwise.
 //
 //   - AES-128 comes before AES-256
 //
-//       The only potential advantages of AES-256 are better multi-target
-//       margins, and hypothetical post-quantum properties. Neither apply to
-//       TLS, and AES-256 is slower due to its four extra rounds (which don't
-//       contribute to the advantages above).
+//     The only potential advantages of AES-256 are better multi-target
+//     margins, and hypothetical post-quantum properties. Neither apply to
+//     TLS, and AES-256 is slower due to its four extra rounds (which don't
+//     contribute to the advantages above).
 //
 //   - ECDSA comes before RSA
 //
-//       The relative order of ECDSA and RSA cipher suites doesn't matter,
-//       as they depend on the certificate. Pick one to get a stable order.
-//
+//     The relative order of ECDSA and RSA cipher suites doesn't matter,
+//     as they depend on the certificate. Pick one to get a stable order.
 var cipherSuitesPreferenceOrder = []uint16{
 	// AEADs w/ ECDHE
 	TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
@@ -439,9 +438,10 @@ func aesgcmPreferred(ciphers []uint16) bool {
 	return false
 }
 
+//goland:noinspection GoUnusedParameter
 func cipherRC4(key, iv []byte, isRead bool) interface{} {
-	cipher, _ := rc4.NewCipher(key)
-	return cipher
+	newCipher, _ := rc4.NewCipher(key)
+	return newCipher
 }
 
 func cipher3DES(key, iv []byte, isRead bool) interface{} {
@@ -549,11 +549,11 @@ func aeadAESGCM(key, noncePrefix []byte) aead {
 	if len(noncePrefix) != noncePrefixLength {
 		panic("gmtls: internal error: wrong nonce length")
 	}
-	aes, err := aes.NewCipher(key)
+	newCipher, err := aes.NewCipher(key)
 	if err != nil {
 		panic(err)
 	}
-	aead, err := cipher.NewGCM(aes)
+	aead, err := cipher.NewGCM(newCipher)
 	if err != nil {
 		panic(err)
 	}
@@ -567,11 +567,11 @@ func aeadAESGCMTLS13(key, nonceMask []byte) aead {
 	if len(nonceMask) != aeadNonceLength {
 		panic("gmtls: internal error: wrong nonce length")
 	}
-	aes, err := aes.NewCipher(key)
+	newCipher, err := aes.NewCipher(key)
 	if err != nil {
 		panic(err)
 	}
-	aead, err := cipher.NewGCM(aes)
+	aead, err := cipher.NewGCM(newCipher)
 	if err != nil {
 		panic(err)
 	}
@@ -651,6 +651,7 @@ func tls10MAC(h hash.Hash, out, seq, header, data, extra []byte) []byte {
 	return res
 }
 
+//goland:noinspection GoUnusedParameter
 func rsaKA(version uint16) keyAgreement {
 	return rsaKeyAgreement{}
 }
@@ -692,8 +693,8 @@ func cipherSuiteByID(id uint16) *cipherSuite {
 }
 
 // 协商tls1.3的密码套件
-//  - have 己方拥有的密码套件
-//  - want 对方需求的密码套件
+//   - have 己方拥有的密码套件
+//   - want 对方需求的密码套件
 func mutualCipherSuiteTLS13(have []uint16, want uint16) *cipherSuiteTLS13 {
 	for _, id := range have {
 		if id == want {
@@ -717,6 +718,8 @@ func cipherSuiteTLS13ByID(id uint16) *cipherSuiteTLS13 {
 // package.
 //
 // See https://www.iana.org/assignments/tls-parameters/tls-parameters.xml
+//
+//goland:noinspection GoCommentStart,GoSnakeCaseUsage
 const (
 	// TLS 1.0 - 1.2 cipher suites.
 	TLS_RSA_WITH_RC4_128_SHA                      uint16 = 0x0005

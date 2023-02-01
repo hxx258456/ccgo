@@ -27,7 +27,7 @@ import (
 	"github.com/hxx258456/ccgo/x509"
 )
 
-// tls安全连接定义, 实现`net.Conn`接口
+// Conn tls安全连接定义, 实现`net.Conn`接口
 // A Conn represents a secured connection.
 // It implements the net.Conn interface.
 type Conn struct {
@@ -610,12 +610,14 @@ func (c *Conn) readChangeCipherSpec() error {
 
 // readRecordOrCCS reads one or more TLS records from the connection and
 // updates the record layer state. Some invariants:
-//   * c.in must be locked
-//   * c.input must be empty
+//   - c.in must be locked
+//   - c.input must be empty
+//
 // During the handshake one and only one of the following will happen:
 //   - c.hand grows
 //   - c.in.changeCipherSpec is called
 //   - an error is returned
+//
 // After the handshake one and only one of the following will happen:
 //   - c.hand grows
 //   - c.input is set
@@ -641,7 +643,10 @@ func (c *Conn) readRecordOrCCS(expectChangeCipherSpec bool) error {
 			err = io.EOF
 		}
 		if e, ok := err.(net.Error); !ok || !e.Temporary() {
-			c.in.setErrorLocked(err)
+			err := c.in.setErrorLocked(err)
+			if err != nil {
+				return err
+			}
 		}
 		return err
 	}
@@ -653,7 +658,10 @@ func (c *Conn) readRecordOrCCS(expectChangeCipherSpec bool) error {
 	// is always < 256 bytes long. Therefore typ == 0x80 strongly suggests
 	// an SSLv2 client.
 	if !handshakeComplete && typ == 0x80 {
-		c.sendAlert(alertProtocolVersion)
+		err := c.sendAlert(alertProtocolVersion)
+		if err != nil {
+			return err
+		}
 		return c.in.setErrorLocked(c.newRecordHeaderError(nil, "unsupported SSLv2 handshake received"))
 	}
 
@@ -661,7 +669,10 @@ func (c *Conn) readRecordOrCCS(expectChangeCipherSpec bool) error {
 	n := int(hdr[3])<<8 | int(hdr[4])
 	// gmssl采用tls1.3的处理
 	if c.haveVers && c.vers != VersionTLS13 && c.vers != VersionGMSSL && vers != c.vers {
-		c.sendAlert(alertProtocolVersion)
+		err := c.sendAlert(alertProtocolVersion)
+		if err != nil {
+			return err
+		}
 		msg := fmt.Sprintf("received record with version %x when expecting version %x", vers, c.vers)
 		return c.in.setErrorLocked(c.newRecordHeaderError(nil, msg))
 	}
@@ -675,13 +686,19 @@ func (c *Conn) readRecordOrCCS(expectChangeCipherSpec bool) error {
 		}
 	}
 	if (c.vers == VersionTLS13 || c.vers == VersionGMSSL) && n > maxCiphertextTLS13 || n > maxCiphertext {
-		c.sendAlert(alertRecordOverflow)
+		err := c.sendAlert(alertRecordOverflow)
+		if err != nil {
+			return err
+		}
 		msg := fmt.Sprintf("oversized record received with length %d", n)
 		return c.in.setErrorLocked(c.newRecordHeaderError(nil, msg))
 	}
 	if err := c.readFromUntil(c.conn, recordHeaderLen+n); err != nil {
 		if e, ok := err.(net.Error); !ok || !e.Temporary() {
-			c.in.setErrorLocked(err)
+			err := c.in.setErrorLocked(err)
+			if err != nil {
+				return err
+			}
 		}
 		return err
 	}
@@ -787,7 +804,10 @@ func (c *Conn) readRecordOrCCS(expectChangeCipherSpec bool) error {
 func (c *Conn) retryReadRecord(expectChangeCipherSpec bool) error {
 	c.retryCount++
 	if c.retryCount > maxUselessRecords {
-		c.sendAlert(alertUnexpectedMessage)
+		err := c.sendAlert(alertUnexpectedMessage)
+		if err != nil {
+			return err
+		}
 		return c.in.setErrorLocked(errors.New("gmtls: too many ignored records"))
 	}
 	return c.readRecordOrCCS(expectChangeCipherSpec)
@@ -1049,7 +1069,10 @@ func (c *Conn) readHandshake() (interface{}, error) {
 	data := c.hand.Bytes()
 	n := int(data[1])<<16 | int(data[2])<<8 | int(data[3])
 	if n > maxHandshake {
-		c.sendAlertLocked(alertInternalError)
+		err := c.sendAlertLocked(alertInternalError)
+		if err != nil {
+			return nil, err
+		}
 		return nil, c.in.setErrorLocked(fmt.Errorf("gmtls: handshake message of length %d bytes exceeds maximum of %d bytes", n, maxHandshake))
 	}
 	for c.hand.Len() < 4+n {
@@ -1204,7 +1227,10 @@ func (c *Conn) handleRenegotiation() error {
 
 	helloReq, ok := msg.(*helloRequestMsg)
 	if !ok {
-		c.sendAlert(alertUnexpectedMessage)
+		err := c.sendAlert(alertUnexpectedMessage)
+		if err != nil {
+			return err
+		}
 		return unexpectedMessageError(helloReq, msg)
 	}
 
@@ -1222,7 +1248,10 @@ func (c *Conn) handleRenegotiation() error {
 	case RenegotiateFreelyAsClient:
 		// Ok.
 	default:
-		c.sendAlert(alertInternalError)
+		err := c.sendAlert(alertInternalError)
+		if err != nil {
+			return err
+		}
 		return errors.New("gmtls: unknown Renegotiation value")
 	}
 
@@ -1237,7 +1266,9 @@ func (c *Conn) handleRenegotiation() error {
 }
 
 // 处理握手完成后到达的握手消息。
-//  比如服务端发出的 newSessionTicketMsgTLS13 或 keyUpdateMsg。
+//
+//	比如服务端发出的 newSessionTicketMsgTLS13 或 keyUpdateMsg。
+//
 // handlePostHandshakeMessage processes a handshake message arrived after the
 // handshake is complete. Up to TLS 1.2, it indicates the start of a renegotiation.
 func (c *Conn) handlePostHandshakeMessage() error {
@@ -1264,7 +1295,10 @@ func (c *Conn) handlePostHandshakeMessage() error {
 		zclog.Print("===== 客户端/服务端接收到 keyUpdateMsg")
 		return c.handleKeyUpdate(msg)
 	default:
-		c.sendAlert(alertUnexpectedMessage)
+		err := c.sendAlert(alertUnexpectedMessage)
+		if err != nil {
+			return err
+		}
 		return fmt.Errorf("gmtls: received unexpected handshake message of type %T", msg)
 	}
 }
@@ -1288,7 +1322,10 @@ func (c *Conn) handleKeyUpdate(keyUpdate *keyUpdateMsg) error {
 		_, err := c.writeRecordLocked(recordTypeHandshake, msg.marshal())
 		if err != nil {
 			// Surface the error at the next write.
-			c.out.setErrorLocked(err)
+			err := c.out.setErrorLocked(err)
+			if err != nil {
+				return err
+			}
 			return nil
 		}
 		zclog.Print("===== 客户端/服务端发出 keyUpdateMsg")
@@ -1404,11 +1441,17 @@ func (c *Conn) closeNotify() error {
 
 	if !c.closeNotifySent {
 		// Set a Write Deadline to prevent possibly blocking forever.
-		c.SetWriteDeadline(time.Now().Add(time.Second * 5))
+		err := c.SetWriteDeadline(time.Now().Add(time.Second * 5))
+		if err != nil {
+			return err
+		}
 		c.closeNotifyErr = c.sendAlertLocked(alertCloseNotify)
 		c.closeNotifySent = true
 		// Any subsequent writes will fail.
-		c.SetWriteDeadline(time.Now())
+		err = c.SetWriteDeadline(time.Now())
+		if err != nil {
+			return err
+		}
 	}
 	return c.closeNotifyErr
 }
@@ -1495,7 +1538,10 @@ func (c *Conn) handshakeContext(ctx context.Context) (ret error) {
 	} else {
 		// If an error occurred during the handshake try to flush the
 		// alert that might be left in the buffer.
-		c.flush()
+		_, err := c.flush()
+		if err != nil {
+			return err
+		}
 	}
 
 	if c.handshakeErr == nil && !c.handshakeComplete() {

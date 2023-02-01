@@ -71,7 +71,10 @@ TBj0/VLZjmmx6BEP3ojY+x1J96relc8geMJgEtslQIxq/H5COEBkEveegeGTLg==
 	if err != nil {
 		panic("failed to connect: " + err.Error())
 	}
-	conn.Close()
+	err = conn.Close()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func ExampleConfig_keyLogWriter() {
@@ -107,7 +110,10 @@ func ExampleConfig_keyLogWriter() {
 	if err != nil {
 		log.Fatalf("Failed to get URL: %v", err)
 	}
-	resp.Body.Close()
+	err = resp.Body.Close()
+	if err != nil {
+		panic(err)
+	}
 
 	// The resulting file can be used with Wireshark to decrypt the TLS
 	// connection by setting (Pre)-Master-Secret log filename in SSL Protocol
