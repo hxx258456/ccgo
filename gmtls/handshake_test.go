@@ -231,8 +231,8 @@ func tempFile(contents string) string {
 		panic("failed to create temp file: " + err.Error())
 	}
 	path := file.Name()
-	file.WriteString(contents)
-	file.Close()
+	_, _ = file.WriteString(contents)
+	_ = file.Close()
 	return path
 }
 
@@ -252,8 +252,9 @@ func localServer(l net.Listener) {
 		if err != nil {
 			return
 		}
+		//goland:noinspection GoBoolExpressions
 		if localFlakes == 1 && n%2 == 0 {
-			c.Close()
+			_ = c.Close()
 			continue
 		}
 		localListener.ch <- c
@@ -273,6 +274,7 @@ Dialing:
 	// We expect a rare mismatch, but probably not 5 in a row.
 	for i := 0; i < 5; i++ {
 		tooSlow := time.NewTimer(1 * time.Second)
+		//goland:noinspection GoDeferInLoop
 		defer tooSlow.Stop()
 		var c1 net.Conn
 		c1, err = net.Dial(addr.Network(), addr.String())
@@ -285,15 +287,16 @@ Dialing:
 			}
 			t.Fatalf("localPipe: %v", err)
 		}
+		//goland:noinspection GoBoolExpressions
 		if localFlakes == 2 && i == 0 {
-			c1.Close()
+			_ = c1.Close()
 			continue
 		}
 		for {
 			select {
 			case <-tooSlow.C:
 				t.Logf("localPipe: timeout waiting for %v", c1.LocalAddr())
-				c1.Close()
+				_ = c1.Close()
 				continue Dialing
 
 			case c2 := <-localListener.ch:
@@ -301,12 +304,13 @@ Dialing:
 					return c1, c2
 				}
 				t.Logf("localPipe: unexpected connection: %v != %v", c2.RemoteAddr(), c1.LocalAddr())
-				c2.Close()
+				_ = c2.Close()
 			}
 		}
 	}
 
 	t.Fatalf("localPipe: failed to connect: %v", err)
+	//goland:noinspection GoUnreachableCode
 	panic("unreachable")
 }
 
@@ -348,16 +352,18 @@ func runMain(m *testing.M) int {
 		l, err = net.Listen("tcp6", "[::1]:0")
 	}
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to open local listener: %v", err)
+		_, _ = fmt.Fprintf(os.Stderr, "Failed to open local listener: %v", err)
 		os.Exit(1)
 	}
 	localListener.ch = make(chan net.Conn)
 	localListener.addr = l.Addr()
-	defer l.Close()
+	defer func(l net.Listener) {
+		_ = l.Close()
+	}(l)
 	go localServer(l)
 
 	if err := checkOpenSSLVersion(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v", err)
+		_, _ = fmt.Fprintf(os.Stderr, "Error: %v", err)
 		os.Exit(1)
 	}
 
@@ -379,7 +385,9 @@ func runMain(m *testing.M) int {
 			panic("failed to open -keylog file: " + err.Error())
 		}
 		testConfig.KeyLogWriter = f
-		defer f.Close()
+		defer func(f *os.File) {
+			_ = f.Close()
+		}(f)
 	}
 
 	return m.Run()
@@ -394,10 +402,12 @@ func testHandshake(t *testing.T, clientConfig, serverConfig *Config) (serverStat
 		err := cli.Handshake()
 		if err != nil {
 			errChan <- fmt.Errorf("client: %v", err)
-			c.Close()
+			_ = c.Close()
 			return
 		}
-		defer cli.Close()
+		defer func(cli *Conn) {
+			_ = cli.Close()
+		}(cli)
 		clientState = cli.ConnectionState()
 		buf, err := io.ReadAll(cli)
 		if err != nil {
@@ -420,7 +430,7 @@ func testHandshake(t *testing.T, clientConfig, serverConfig *Config) (serverStat
 		}
 		err = <-errChan
 	} else {
-		s.Close()
+		_ = s.Close()
 		<-errChan
 	}
 	return
