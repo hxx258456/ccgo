@@ -5,7 +5,7 @@ gmtls是基于`golang/go`的`tls`包实现的国密改造版本。
 对应版权声明: thrid_licenses/github.com/golang/go/LICENSE
 */
 
-// Package tls partially implements TLS 1.2, as specified in RFC 5246,
+// Package gmtls partially implements TLS 1.2, as specified in RFC 5246,
 // and TLS 1.3, as specified in RFC 8446.
 package gmtls
 
@@ -32,7 +32,7 @@ import (
 	"github.com/hxx258456/ccgo/x509"
 )
 
-// 生成tls通信Server
+// Server 生成tls通信Server
 // Server returns a new TLS server side connection
 // using conn as the underlying transport.
 // The configuration config must be non-nil and must include
@@ -47,7 +47,7 @@ func Server(conn net.Conn, config *Config) *Conn {
 	return c
 }
 
-// 生成tls通信Client
+// Client 生成tls通信Client
 // Client returns a new TLS client side connection
 // using conn as the underlying transport.
 // The config cannot be nil: users must set either ServerName or
@@ -166,7 +166,7 @@ func dial(ctx context.Context, netDialer *net.Dialer, network, addr string, conf
 	conn := Client(rawConn, config)
 	// 客户端发起tls握手
 	if err := conn.HandshakeContext(ctx); err != nil {
-		rawConn.Close()
+		_ = rawConn.Close()
 		return nil, err
 	}
 	return conn, nil
@@ -379,7 +379,7 @@ func parsePrivateKey(der []byte) (crypto.PrivateKey, error) {
 	return nil, errors.New("gmtls: failed to parse private key")
 }
 
-// 根据客户端发出的ClientHello的协议与密码套件决定Server的证书链
+// NewServerConfigByClientHello 根据客户端发出的ClientHello的协议与密码套件决定Server的证书链
 //  当客户端支持tls1.3或gmssl，且客户端支持的密码套件包含 TLS_SM4_GCM_SM3 时，服务端证书采用gmSigCert。
 //  - gmSigCert 国密证书链
 //  - genericCert 一般证书链
